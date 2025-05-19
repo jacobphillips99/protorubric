@@ -1,6 +1,8 @@
-from pydantic import BaseModel
 import typing as t
+
 import yaml
+from pydantic import BaseModel
+
 
 class BaseConfig(BaseModel):
 
@@ -11,5 +13,5 @@ class BaseConfig(BaseModel):
     @classmethod
     def from_yaml(cls, path: str) -> "BaseConfig":
         with open(path, "r") as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
         return cls.from_dict(data)
