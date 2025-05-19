@@ -1,0 +1,13 @@
+scoring_configs: 
+  - binary
+  - unit_scalar
+  - name: job_quality_categorical
+    type: categorical
+    options: 
+      - "good"
+      - "medium"
+      - "bad"
+  - name: job_quality_numerical
+    type: numerical
+    min: 0
+    max: 10

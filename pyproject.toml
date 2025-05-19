@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-rubric"
+version = "0.1.0"
+description = "Open-source tools for autograding LLM answers with rubrics"
+authors = [
+    { name = "Jacob Phillips", email = "jacob.phillips8905@gmail.com" }
+]
+requires-python = ">=3.10"
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.isort]
+profile = "black"
+line_length = 100
