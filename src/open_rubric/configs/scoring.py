@@ -4,6 +4,10 @@ import yaml
 
 from open_rubric.configs.base import BaseConfig
 
+"""
+todo others -- likert (discrete and ordered)
+"""
+
 
 class ScoringConfig(BaseConfig):
     name: str = ""
@@ -11,11 +15,11 @@ class ScoringConfig(BaseConfig):
     type: t.Literal["discrete", "continuous"]
 
     @classmethod
-    def from_data(cls, data: dict | str) -> "ScoringConfig":
+    def from_data(cls, data: dict | str, **kwargs: t.Any) -> "ScoringConfig":
         # named scoring configs, like unit_scalar, binary, etc can be accessed by name
         if isinstance(data, str):
             if data in subtype_to_scoring_configs:
-                return subtype_to_scoring_configs[data]()
+                return subtype_to_scoring_configs[data](**kwargs)
             else:
                 raise ValueError(f"Cannot find scoring config with name {data}")
         elif isinstance(data, dict):
@@ -29,10 +33,10 @@ class ScoringConfig(BaseConfig):
             raise ValueError(f"Invalid data type: {type(data)}")
 
     @classmethod
-    def from_yaml(cls, path: str) -> "ScoringConfig":
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "ScoringConfig":
         with open(path, "r") as f:
             config = yaml.safe_load(f)
-        return cls.from_data(config)
+        return cls.from_data(config, **kwargs)
 
 
 class DiscreteScoringConfig(ScoringConfig):
@@ -74,43 +78,47 @@ subtype_to_discrete_scoring_configs = {
     "categorical": CategoricalScoringConfig,
     "discrete": DiscreteScoringConfig,
 }
+discrete_scoring_configs = list(subtype_to_discrete_scoring_configs.values())
 
 subtype_to_continuous_scoring_configs = {
     "continuous": ContinuousScoringConfig,
     "unit_scalar": UnitScalarScoringConfig,
 }
-
+continuous_scoring_configs = list(subtype_to_continuous_scoring_configs.values())
 subtype_to_scoring_configs = {
     **subtype_to_discrete_scoring_configs,
     **subtype_to_continuous_scoring_configs,
 }
+all_scoring_configs = list(subtype_to_scoring_configs.values())
 
 
 class ScoringConfigs(BaseConfig):
     scoring_configs: dict[str, ScoringConfig]
 
     @classmethod
-    def from_data(cls, data: list[dict | str] | dict | str) -> "ScoringConfigs":
+    def from_data(cls, data: list[dict | str] | dict, **kwargs: t.Any) -> "ScoringConfigs":
         if isinstance(data, dict):
-            if 'scoring_configs' in data:
-                data = data["scoring_configs"]
-        configs = []
-        for item in data:
-            if isinstance(item, str) and item.endswith(".yaml"): # recursive!
-                configs.extend(ScoringConfigs.from_yaml(item).scoring_configs.values()) 
+            if "scoring_configs" in data:
+                list_data: list[dict | str] = data["scoring_configs"]
+        else:
+            list_data = data
+        configs: list[ScoringConfig] = []
+        for item in list_data:
+            if isinstance(item, str) and item.endswith(".yaml"):  # recursive!
+                configs.extend(ScoringConfigs.from_yaml(item, **kwargs).scoring_configs.values())
             else:
-                configs.append(ScoringConfig.from_data(item))
+                configs.append(ScoringConfig.from_data(item, **kwargs))
         all_names = [config.name for config in configs]
         assert len(all_names) == len(set(all_names)), f"Duplicate scoring config names! {all_names}"
         return cls(scoring_configs={config.name: config for config in configs})
 
     @classmethod
-    def from_yaml(cls, path: str) -> "ScoringConfigs":
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "ScoringConfigs":
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         if isinstance(data, dict):
             data = data["scoring_configs"]
-        return cls.from_data(data)
+        return cls.from_data(data, **kwargs)
 
     def get_config_by_name(self, name: str) -> ScoringConfig:
         return self.scoring_configs[name]

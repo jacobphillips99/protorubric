@@ -3,15 +3,14 @@ scoring_configs:
   - unit_scalar
   - my_scoring_config.yaml
 
-# evaluator_configs: 
-#   - name: 
+
 
 
 requirements:
   - name: helpfulness
     instruction: Is the response helpful?
     scoring_config: unit_scalar
-  
+
   - name: grammar
     instruction: Is the response grammatically correct?
     scoring_config: binary
@@ -27,5 +26,3 @@ requirements:
       - helpfulness
       - grammar
       - tone
-
-    
