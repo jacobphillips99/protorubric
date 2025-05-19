@@ -11,7 +11,7 @@ class ScoringConfig(BaseConfig):
     type: t.Literal["discrete", "continuous"]
 
     @classmethod
-    def from_dict_or_str(cls, data: dict | str) -> "ScoringConfig":
+    def from_data(cls, data: dict | str) -> "ScoringConfig":
         # named scoring configs, like unit_scalar, binary, etc can be accessed by name
         if isinstance(data, str):
             if data in subtype_to_scoring_configs:
@@ -32,7 +32,7 @@ class ScoringConfig(BaseConfig):
     def from_yaml(cls, path: str) -> "ScoringConfig":
         with open(path, "r") as f:
             config = yaml.safe_load(f)
-        return cls.from_dict_or_str(config)
+        return cls.from_data(config)
 
 
 class DiscreteScoringConfig(ScoringConfig):
@@ -90,8 +90,16 @@ class ScoringConfigs(BaseConfig):
     scoring_configs: dict[str, ScoringConfig]
 
     @classmethod
-    def from_dicts(cls, data: list[dict | str]) -> "ScoringConfigs":
-        configs = [ScoringConfig.from_dict_or_str(item) for item in data]
+    def from_data(cls, data: list[dict | str] | dict | str) -> "ScoringConfigs":
+        if isinstance(data, dict):
+            if 'scoring_configs' in data:
+                data = data["scoring_configs"]
+        configs = []
+        for item in data:
+            if isinstance(item, str) and item.endswith(".yaml"): # recursive!
+                configs.extend(ScoringConfigs.from_yaml(item).scoring_configs.values()) 
+            else:
+                configs.append(ScoringConfig.from_data(item))
         all_names = [config.name for config in configs]
         assert len(all_names) == len(set(all_names)), f"Duplicate scoring config names! {all_names}"
         return cls(scoring_configs={config.name: config for config in configs})
@@ -102,7 +110,7 @@ class ScoringConfigs(BaseConfig):
             data = yaml.safe_load(f)
         if isinstance(data, dict):
             data = data["scoring_configs"]
-        return cls.from_dicts(data)
+        return cls.from_data(data)
 
     def get_config_by_name(self, name: str) -> ScoringConfig:
         return self.scoring_configs[name]

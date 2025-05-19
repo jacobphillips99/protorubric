@@ -14,7 +14,8 @@ class BaseAggregatingConfig(BaseConfig):
 
     def check_requirements(self, requirements: list[RequirementConfig]) -> bool:
         if self.valid_scoring_configs is not None:
-            assert all(type(req.score) in self.valid_scoring_configs for req in requirements)
+            for req in requirements:
+                assert req.scoring_config in self.valid_scoring_configs, f"Invalid scoring config: {req.scoring_config} for requirement {req.name} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
 
 
     def __call__(self, requirements: list[RequirementConfig], **kwargs: t.Any) -> t.Any:

@@ -1,13 +1,31 @@
 scoring_configs:
   - binary
   - unit_scalar
-  - name: job_quality_cat
-    subtype: categorical
-    options:
-      - "good"
-      - "medium"
-      - "bad"
-  - name: job_quality_num
-    subtype: continuous
-    min: 0
-    max: 10
+  - my_scoring_config.yaml
+
+# evaluator_configs: 
+#   - name: 
+
+
+requirements:
+  - name: helpfulness
+    instruction: Is the response helpful?
+    scoring_config: unit_scalar
+  
+  - name: grammar
+    instruction: Is the response grammatically correct?
+    scoring_config: binary
+
+  - name: tone
+    instruction: What tone does the response have?
+    scoring_config: tone
+
+  - name: job_quality
+    instruction: What is the overall quality of the job?
+    scoring_config: job_quality_num
+    dependency_names:
+      - helpfulness
+      - grammar
+      - tone
+
+    

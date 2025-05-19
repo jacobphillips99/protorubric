@@ -1,0 +1,11 @@
+scoring_configs:
+  - name: tone
+    subtype: categorical
+    options:
+      - "positive"
+      - "neutral"
+      - "negative"
+  - name: job_quality_num
+    subtype: continuous
+    min: 0
+    max: 10

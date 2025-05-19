@@ -1,4 +1,4 @@
-from open_rubric.configs.scoring import ScoringConfigs
+from open_rubric.configs.rubric import Rubric
 
-scoring_configs = ScoringConfigs.from_yaml("test_rubric.yaml")
-# breakpoint()
+rubric = Rubric.from_yaml("test_rubric.yaml")
+breakpoint()
