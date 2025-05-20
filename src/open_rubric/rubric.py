@@ -33,13 +33,16 @@ class Rubric(BaseConfig):
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
 
-    def evaluate(self) -> dict[str, AggregatedQueryConfig]:
-        # solve the DAG of requirements, skip for now. just loop through
+    def solve(self) -> dict[str, AggregatedQueryConfig]:
+        # solve the DAG of requirements, skip for now. just loop through as the reqs are provided in a topological sort
+        # TODO: solve the DAG of requirements
         results: dict[str, AggregatedQueryConfig] = dict()
         for req in self.requirements.requirements.values():
-            dependent_results = {
-                dep_name: results[dep_name] for dep_name in req.dependency_names
-            } if req.dependency_names is not None else None
+            dependent_results = (
+                {dep_name: results[dep_name] for dep_name in req.dependency_names}
+                if req.dependency_names is not None
+                else None
+            )
             result = req.evaluate(dependent_results)
             results[req.name] = result
         return results

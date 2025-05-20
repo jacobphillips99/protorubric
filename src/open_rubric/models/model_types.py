@@ -1,8 +1,8 @@
 import typing as t
 
 import litellm
-from pydantic import BaseModel, Field, model_validator
 from litellm.types.utils import ModelResponse as LiteLLMResponse
+from pydantic import BaseModel, Field, model_validator
 
 
 class ImageInput(BaseModel):
@@ -16,13 +16,15 @@ class ModelInput(BaseModel):
     prompt: str
     images: t.Optional[list[ImageInput]] = None
 
+
 class ModelKwargs(BaseModel):
     n_samples: t.Optional[int] = None
     temperature: t.Optional[float] = None
-    max_tokens: t.Optional[int] = 2**13 # 8192
+    max_tokens: int = 2**13  # 8192
     top_p: t.Optional[float] = None
     top_k: t.Optional[int] = None
     seed: t.Optional[int] = None
+
 
 class ModelRequest(BaseModel):
     model: str
@@ -36,11 +38,12 @@ class ModelRequest(BaseModel):
     @model_validator(mode="before")
     def set_provider(cls, data: dict) -> dict:
         if not data.get("provider"):
-            model = data['model']
+            model = data["model"]
             # result is (model, provider, key, endpoint)
-            provider = litellm.get_llm_provider(model)[1] 
-            data['provider'] = provider
+            provider = litellm.get_llm_provider(model)[1]
+            data["provider"] = provider
         return data
+
 
 class ModelResponse(BaseModel):
     texts: list[str]
@@ -52,8 +55,12 @@ class ModelResponse(BaseModel):
     stop_reason: t.Optional[str] = None
 
     @classmethod
-    def from_litellm_response(cls, litellm_response: LiteLLMResponse, request: ModelRequest, response_ms: float) -> "ModelResponse":
-        texts = [choice.message.content for choice in litellm_response.choices] # TODO -- multiple return choices?
+    def from_litellm_response(
+        cls, litellm_response: LiteLLMResponse, request: ModelRequest, response_ms: float
+    ) -> "ModelResponse":
+        texts = [
+            choice.message.content for choice in litellm_response.choices
+        ]  # TODO -- multiple return choices?
         usage = litellm_response.usage.model_dump() if hasattr(litellm_response, "usage") else {}
         return cls(
             texts=texts,
@@ -61,20 +68,21 @@ class ModelResponse(BaseModel):
             provider=request.provider,
             usage=usage,
             response_ms=response_ms,
-            raw_response=litellm_response.model_dump() if hasattr(litellm_response, "model_dump") else None,
+            raw_response=(
+                litellm_response.model_dump() if hasattr(litellm_response, "model_dump") else None
+            ),
         )
 
 
-def construct_payload(model_request: ModelRequest, messages: list[dict[str, t.Any]]) -> dict[str, t.Any]:
-    # have to add model specific kwargs here 
-    payload = {
-        "model": model_request.model,
-        "messages": messages
-    }
+def construct_payload(
+    model_request: ModelRequest, messages: list[dict[str, t.Any]]
+) -> dict[str, t.Any]:
+    # have to add model specific kwargs here
+    payload: dict[str, t.Any] = {"model": model_request.model, "messages": messages}
     if model_request.model_kwargs:
         for k, v in model_request.model_kwargs.model_dump().items():
             if v is not None:
-                if k == 'n_samples':
+                if k == "n_samples":
                     if model_request.provider.lower() in ["anthropic"]:
                         raise ValueError("Anthropic does not support n samples")
                     payload["n"] = v
@@ -92,6 +100,7 @@ def construct_payload(model_request: ModelRequest, messages: list[dict[str, t.An
         payload.pop("top_p", None)
     else:
         payload["max_tokens"] = model_request.model_kwargs.max_tokens
+
     if "gpt" in model_request.model:
         payload["max_tokens"] = min(payload["max_tokens"], 16384)
     elif "claude-3-5" in model_request.model:

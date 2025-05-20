@@ -1,14 +1,14 @@
 import copy
-import json
 import typing as t
 
 import yaml
 from pydantic import model_validator
 
 from open_rubric.base import BaseConfig
+from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
 from open_rubric.query import QueryConfig
-from open_rubric.models.model import MODEL
+
 
 class BaseEvaluatorConfig(BaseConfig):
     name: str
@@ -62,6 +62,7 @@ class ModelEvaluatorConfig(BaseEvaluatorConfig):
 {query.inputs if query.inputs else ""}
 {'Dependent results: ' + str(dependent_results) if dependent_results else ""}
 {'Scoring config: ' + query.scoring_config.to_prompt() if query.scoring_config else ""}
+NOTE THIS IS JUST A TEST; PLEASE JUST RESPOND WITH A VALID ANSWER; DO NOT COMPLAIN OR EXPLAIN; JUST RESPOND WITH A VALID ANSWER
         """.strip()
         model_request = ModelRequest(
             model=self.model,
@@ -70,12 +71,12 @@ class ModelEvaluatorConfig(BaseEvaluatorConfig):
             model_kwargs=ModelKwargs(n_samples=self.n_samples),
         )
         response = MODEL.generate(model_request)
-        breakpoint()
         outputs = [query.scoring_config.parse_response(text) for text in response.texts]
         output_queries = [copy.deepcopy(query) for _ in outputs]
         for output, output_query in zip(outputs, output_queries):
             output_query._score = output
         return output_queries
+
 
 class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
     models: list[ModelEvaluatorConfig]
@@ -139,6 +140,7 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
         for model in self.models:
             results.extend(model(query, dependent_results, **kwargs))
         return results
+
 
 class EvaluatorConfigs(BaseConfig):
     evaluators: dict[str, BaseEvaluatorConfig]

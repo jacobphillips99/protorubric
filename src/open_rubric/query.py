@@ -26,7 +26,7 @@ class QueryConfig(BaseConfig):
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
-    
+
     @property
     def been_scored(self) -> bool:
         return self._score is not None

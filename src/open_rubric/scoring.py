@@ -1,6 +1,7 @@
 import typing as t
 
 import yaml
+from pydantic import model_validator
 
 from open_rubric.base import BaseConfig
 
@@ -37,7 +38,7 @@ class ScoringConfig(BaseConfig):
         with open(path, "r") as f:
             config = yaml.safe_load(f)
         return cls.from_data(config, **kwargs)
-    
+
     def to_prompt(self) -> str:
         raise NotImplementedError(f"Scoring config {self.name} must implement to_prompt")
 
@@ -48,22 +49,38 @@ class DiscreteScoringConfig(ScoringConfig):
     type: t.Literal["discrete"] = "discrete"
     options: list[t.Any]
 
+    @model_validator(mode="after")
+    def check_options(self) -> "DiscreteScoringConfig":
+        options = self.options
+        assert isinstance(options, list), f"Options must be a list; got {type(options)}"
+        type_of_options = type(options[0])
+        assert all(
+            isinstance(option, type_of_options) for option in options
+        ), f"All options must be of type {type_of_options}; got {options}"
+        return self
+
     # TODO
     def to_prompt(self) -> str:
         return f"""
 Score the response based on the following options: {self.options}
 Respond with ONLY one of the options.
         """.strip()
-    
+
     def parse_response(self, response: str) -> t.Any:
-        assert response in self.options, f"Response {response} not in options {self.options}"
-        return response
+        type_of_options = type(self.options[0])
+        score = type_of_options(response)
+        assert score in self.options, f"Response {response} not in options {self.options}"
+        return score
 
 
 class BinaryScoringConfig(DiscreteScoringConfig):
     name: str = "binary"
     subtype: str = "binary"
-    options: list[str] = ['true', 'false'] # JSON compatible
+    options: list[str] = ["true", "false"]  # JSON compatible
+
+    def parse_response(self, response: str) -> bool:
+        assert response in self.options, f"Response {response} not in options {self.options}"
+        return response == "true"
 
 
 class CategoricalScoringConfig(DiscreteScoringConfig):
@@ -88,10 +105,15 @@ class ContinuousScoringConfig(ScoringConfig):
 
     def parse_response(self, response: str) -> t.Union[int, float]:
         score = float(response)
-        assert score > self.min if self.inclusive_min else score >= self.min, f"Score {score} is less than minimum {self.min}"
-        assert score < self.max if self.inclusive_max else score <= self.max, f"Score {score} is greater than maximum {self.max}"
+        if self.min is not None:
+            assert (
+                score > self.min if not self.inclusive_min else score >= self.min
+            ), f"Score {score} is less than minimum {self.min}"
+        if self.max is not None:
+            assert (
+                score < self.max if not self.inclusive_max else score <= self.max
+            ), f"Score {score} is greater than maximum {self.max}"
         return score
-
 
 
 class UnitScalarScoringConfig(ContinuousScoringConfig):

@@ -47,6 +47,9 @@ class RequirementConfig(BaseConfig):
         evaluated_queries = self.evaluator(self.query, dependent_results)
         aggregated_query = self.aggregator(evaluated_queries)
         self._result = aggregated_query
+        print(
+            f"{self.name}: {self._result.score} over {self._result.n_votes} votes aggregated by {self.aggregator.name}"
+        )
         return aggregated_query
 
 
@@ -69,9 +72,7 @@ class Requirements(BaseConfig):
         assert len(all_names) == len(set(all_names)), f"Duplicate requirement names! {all_names}"
         requirement_dict = {req.name: req for req in reqs}
         dependency_dict = {
-            req.name: req.dependency_names
-            for req in reqs
-            if req.dependency_names is not None
+            req.name: req.dependency_names for req in reqs if req.dependency_names is not None
         }
         return cls(requirements=requirement_dict, dependencies=dependency_dict)
 

@@ -31,7 +31,6 @@ class BaseAggregatingConfig(BaseConfig):
     name: str
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
 
-
     def get_scores(self, queries: list[QueryConfig]) -> list[t.Any]:
         return [query._score for query in queries]
 
@@ -42,7 +41,9 @@ class BaseAggregatingConfig(BaseConfig):
                     type(query.scoring_config) in self.valid_scoring_configs
                 ), f"Invalid scoring config: {type(query.scoring_config)} for query {str(query)} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
         if not all([query.been_scored for query in queries]):
-            raise ValueError(f"All queries must be scored before aggregation; got queries: {queries}")
+            raise ValueError(
+                f"All queries must be scored before aggregation; got queries: {queries}"
+            )
         return True
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
