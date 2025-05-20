@@ -1,7 +1,10 @@
 import typing as t
+
 import yaml
+
 from open_rubric.configs.base import BaseConfig
 from open_rubric.configs.scoring import ScoringConfig
+
 
 class QueryConfig(BaseConfig):
     instruction: str
@@ -13,9 +16,12 @@ class QueryConfig(BaseConfig):
 
     @classmethod
     def from_data(cls, data: dict, **kwargs: t.Any) -> "QueryConfig":
-        if "scoring_config" in data:
-            data["scoring_config"] = kwargs["scoring_configs"].get_config_by_name(data["scoring_config"])
+        if "scoring_config" in data and isinstance(data["scoring_config"], str):
+            data["scoring_config"] = kwargs["scoring_configs"].get_config_by_name(
+                data["scoring_config"]
+            )
         return super().from_data(data, **kwargs)
+
     @classmethod
     def from_yaml(cls, path: str, **kwargs: t.Any) -> "QueryConfig":
         with open(path, "r") as f:

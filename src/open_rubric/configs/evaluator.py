@@ -1,45 +1,120 @@
-from open_rubric.configs.base import BaseConfig
 import typing as t
+
+import yaml
 from pydantic import model_validator
 
+from open_rubric.configs.base import BaseConfig
 from open_rubric.configs.query import QueryConfig
 
-class EvaluatorConfig(BaseConfig):
+
+class BaseEvaluatorConfig(BaseConfig):
     name: str
     type: str
 
-    def __call__(self, query: QueryConfig, dependent_results: t.Optional[dict[str, t.Any]] = None, **kwargs: t.Any) -> list[QueryConfig]:
+    @classmethod
+    def from_data(cls, data: dict, **kwargs: t.Any) -> "BaseEvaluatorConfig":
+        if "type" in data:
+            if data["type"] == "llm":
+                return ModelEvaluatorConfig.from_data(data, **kwargs)
+            elif data["type"] == "llm-ensemble":
+                return EnsembledModelEvaluatorConfig.from_data(data, **kwargs)
+        raise ValueError(f"Invalid evaluator type: {data['type']}")
+
+    def __call__(
+        self,
+        query: QueryConfig,
+        dependent_results: t.Optional[dict[str, t.Any]] = None,
+        **kwargs: t.Any,
+    ) -> list[QueryConfig]:
         raise NotImplementedError(f"Evaluator {self.name} must implement __call__")
-    
-class ModelEvaluatorConfig(EvaluatorConfig):
+
+
+class ModelEvaluatorConfig(BaseEvaluatorConfig):
     model: str
     n_samples: int = 1
+    type: t.Literal["llm"] = "llm"
 
-    def __call__(self, query: QueryConfig, dependent_results: t.Optional[dict[str, t.Any]] = None, **kwargs: t.Any) -> list[QueryConfig]:
-        pass
+    @model_validator(mode="before")
+    def set_n_samples(cls, data: dict) -> dict:
+        if data.get("n_samples") is None:
+            data["n_samples"] = 1
+        if "name" not in data:
+            data["name"] = data["model"]
+        return data
 
-class EnsembledModelEvaluatorConfig(EvaluatorConfig):
+    @classmethod
+    def from_data(cls, data: dict, **kwargs: t.Any) -> "ModelEvaluatorConfig":
+        return cls(**data)
+
+    def __call__(
+        self,
+        query: QueryConfig,
+        dependent_results: t.Optional[dict[str, t.Any]] = None,
+        **kwargs: t.Any,
+    ) -> list[QueryConfig]:
+        raise NotImplementedError(f"Evaluator {self.name} must implement __call__")
+
+
+class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
     models: list[ModelEvaluatorConfig | str]
     n_samples_per_model: t.Optional[int] = None
+    type: t.Literal["llm-ensemble"] = "llm-ensemble"
 
-    @model_validator(mode="after")
-    def validate_models(self) -> "EnsembledModelEvaluatorConfig":
-        # turn strings into ModelEvaluator objects and set global n_samples if provided
-        output_models: list[ModelEvaluatorConfig] = []
-        global_n_samples = self.n_samples_per_model if self.n_samples_per_model is not None else 1
-        for model in self.models:
+    @classmethod
+    def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "EnsembledModelEvaluatorConfig":
+        if isinstance(data, dict) and "models" in data:
+            raw_models = data.pop("models")
+        elif isinstance(data, list):
+            raw_models = data
+        else:
+            raise ValueError(f"Invalid data type: {type(data)}; {data}")
+        if isinstance(data, dict):
+            n_samples_per_model = data.get("n_samples_per_model", None) or kwargs.get(
+                "n_samples_per_model", None
+            )
+        else:
+            n_samples_per_model = None
+        models = []
+        for model in raw_models:
             if isinstance(model, str):
-                output_models.append(ModelEvaluatorConfig(model=model, n_samples=global_n_samples))
+                models.append(
+                    ModelEvaluatorConfig(name=model, model=model, n_samples=n_samples_per_model)
+                )
+            elif isinstance(model, dict):
+                if n_samples_per_model is not None:
+                    if "n_samples" in model:
+                        print(
+                            f"Overwriting n_samples for {model['model']} from {model['n_samples']} to {n_samples_per_model}"
+                        )
+                    model["n_samples"] = n_samples_per_model
+                models.append(ModelEvaluatorConfig(**model))
             else:
-                output_models.append(model)
-        self.models = output_models
-        return self
+                raise ValueError(f"Invalid model type: {type(model)}; {model}")
+
+        if isinstance(data, dict):
+            name = data.get("name", "llm-ensemble")
+        else:
+            name = "llm-ensemble-" + "-".join([model.model for model in models])
+        return cls(
+            models=models,
+            n_samples_per_model=n_samples_per_model,
+            name=name,
+        )
+
+    @classmethod
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "EnsembledModelEvaluatorConfig":
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        return cls.from_data(data, **kwargs)
 
 
+class EvaluatorConfigs(BaseConfig):
+    evaluators: dict[str, BaseEvaluatorConfig]
 
+    @classmethod
+    def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "EvaluatorConfigs":
+        evaluators = [BaseEvaluatorConfig.from_data(evaluator) for evaluator in data]
+        return cls(evaluators={evaluator.name: evaluator for evaluator in evaluators})
 
-
-
-
-
-
+    def get_config_by_name(self, name: str) -> BaseEvaluatorConfig:
+        return self.evaluators[name]
