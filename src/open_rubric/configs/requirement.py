@@ -3,16 +3,22 @@ import typing as t
 import yaml
 
 from open_rubric.configs.base import BaseConfig
-from open_rubric.configs.scoring import ScoringConfig, ScoringConfigs
+from open_rubric.configs.evaluator import Evaluator
+from open_rubric.configs.aggregating import AggregatedQueryConfig
+from open_rubric.configs.query import QueryConfig
+from open_rubric.configs.scoring import ScoringConfigs
 
 
 class RequirementConfig(BaseConfig):
     name: str
-    instruction: str
-    example: t.Optional[str] = None
-    scoring_config: ScoringConfig
-    _score: t.Optional[t.Any] = None
-    dependency_names: t.Optional[list[str]] = None
+    query: QueryConfig
+    evaluator: t.Optional[Evaluator] = None
+    aggregator: t.Optional[AggregatedQueryConfig] = None
+
+    def evaluate(self, dependent_results: dict[str, t.Any]) -> AggregatedQueryConfig:
+        evaluated_queries = self.evaluator(self.query, dependent_results)
+        aggregated_query = self.aggregator(evaluated_queries)
+        return aggregated_query
 
 
 class Requirements(BaseConfig):

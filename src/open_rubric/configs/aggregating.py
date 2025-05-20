@@ -8,7 +8,7 @@ import numpy as np
 from scipy.stats import mode
 
 from open_rubric.configs.base import BaseConfig
-from open_rubric.configs.requirement import RequirementConfig
+from open_rubric.configs.query import QueryConfig
 from open_rubric.configs.scoring import (
     BinaryScoringConfig,
     ScoringConfig,
@@ -17,49 +17,49 @@ from open_rubric.configs.scoring import (
 )
 
 
-class AggregatedRequirementConfig(RequirementConfig):
-    requirements: list[RequirementConfig]
+class AggregatedQueryConfig(QueryConfig):
+    queries: list[QueryConfig]
     score: t.Any
     confidence: t.Optional[t.Any] = None
 
     @property
     def n_votes(self) -> int:
-        return len(self.requirements)
+        return len(self.queries)
 
 
 class BaseAggregatingConfig(BaseConfig):
     name: str
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
 
-    def check_requirements(self, requirements: list[RequirementConfig]) -> bool:
+    def check_queries(self, queries: list[QueryConfig]) -> bool:
         if self.valid_scoring_configs is not None:
-            for req in requirements:
+            for req in queries:
                 assert (
                     req.scoring_config in self.valid_scoring_configs
-                ), f"Invalid scoring config: {req.scoring_config} for requirement {req.name} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
+                ), f"Invalid scoring config: {req.scoring_config} for query {req.name} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
         return True
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
         raise NotImplementedError(f"Aggregating config {self.name} must implement __call__")
 
 
 class NullAggregatingConfig(BaseAggregatingConfig):
     """
-    Placeholder for no aggregation, just returns the first requirement as an "aggregated" requirement
+    Placeholder for no aggregation, just returns the first query as an "aggregated" query
     """
 
     name: str = "null"
     valid_scoring_configs = None
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        return AggregatedRequirementConfig(
-            requirements=requirements,
-            score=requirements[0].score,
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        return AggregatedQueryConfig(
+            queries=queries,
+            score=queries[0].score,
             confidence=1,
         )
 
@@ -69,12 +69,12 @@ class MeanAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = continuous_scoring_configs
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        score = np.mean([req.score for req in requirements])
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        score = np.mean([req.score for req in queries])
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=None,
         )
@@ -85,12 +85,12 @@ class MedianAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = continuous_scoring_configs
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        score = np.median([req.score for req in requirements])
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        score = np.median([req.score for req in queries])
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=None,
         )
@@ -101,14 +101,14 @@ class ModeAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = discrete_scoring_configs
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        scores = [req.score for req in requirements]
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        scores = [req.score for req in queries]
         score, count = mode(scores)
         conf = count / len(scores)
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=conf,
         )
@@ -119,12 +119,12 @@ class AllAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = [BinaryScoringConfig]
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        score = all([req.score for req in requirements])
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        score = all([req.score for req in queries])
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=1 if score else 0,
         )
@@ -135,12 +135,12 @@ class AnyAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = [BinaryScoringConfig]
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        score = any([req.score for req in requirements])
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        score = any([req.score for req in queries])
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=1 if score else 0,
         )
@@ -151,12 +151,12 @@ class MaxAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = continuous_scoring_configs
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        score = max([req.score for req in requirements])
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        score = max([req.score for req in queries])
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=None,
         )
@@ -167,12 +167,12 @@ class MinAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = continuous_scoring_configs
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
-        self.check_requirements(requirements)
-        score = min([req.score for req in requirements])
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        score = min([req.score for req in queries])
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=None,
         )
@@ -183,8 +183,8 @@ class WeightedAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = continuous_scoring_configs
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
         assert (
             "weights" in kwargs
         ), f"Weights must be provided for weighted aggregation; got kwargs: {kwargs}"
@@ -196,19 +196,19 @@ class WeightedSumAggregatingConfig(BaseAggregatingConfig):
     valid_scoring_configs = continuous_scoring_configs
 
     def __call__(
-        self, requirements: list[RequirementConfig], **kwargs: t.Any
-    ) -> AggregatedRequirementConfig:
+        self, queries: list[QueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
         assert (
             "weights" in kwargs
         ), f"Weights must be provided for weighted aggregation; got kwargs: {kwargs}"
         weights = kwargs["weights"]
         assert len(weights) == len(
-            requirements
-        ), f"Weights must be the same length as requirements; got weights: {weights} and requirements: {requirements}"
-        self.check_requirements(requirements)
-        score = sum([req.score * weight for req, weight in zip(requirements, weights)])
-        return AggregatedRequirementConfig(
-            requirements=requirements,
+            queries
+        ), f"Weights must be the same length as queries; got weights: {weights} and queries: {queries}"
+        self.check_queries(queries)
+        score = sum([req.score * weight for req, weight in zip(queries, weights)])
+        return AggregatedQueryConfig(
+            queries=queries,
             score=score,
             confidence=None,
         )

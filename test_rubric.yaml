@@ -2,27 +2,61 @@ scoring_configs:
   - binary
   - unit_scalar
   - my_scoring_config.yaml
+  - name: overall_quality
+    subtype: continuous
+    min: 0
+    max: 100
 
+evaluators:
+  - name: my-sole-llm
+    type: llm
+    model: gpt-4.1
 
+  - name: my-triple-llm
+    type: llm
+    model: gpt-4.1-mini
+    n_samples: 3
 
-
+  - name: my-llm-committee
+    type: llm-ensemble
+    models: 
+      - gpt-4.1
+      - gpt-4.1-mini
+      - gpt-4.1-nano
+        n_samples: 2
+      
 requirements:
   - name: helpfulness
-    instruction: Is the response helpful?
-    scoring_config: unit_scalar
+    query:
+      instruction: Is the response helpful?
+      scoring_config: unit_scalar
+    evaluator: my-sole-llm
 
   - name: grammar
-    instruction: Is the response grammatically correct?
-    scoring_config: binary
+    query:
+      instruction: Is the response grammatically correct?
+      scoring_config: binary
+    evaluator: my-triple-llm
+    aggregator: all
 
   - name: tone
-    instruction: What tone does the response have?
-    scoring_config: tone
+    query:
+      instruction: What tone does the response have?
+      scoring_config: tone
+    evaluator: my-sole-llm
 
   - name: job_quality
-    instruction: What is the overall quality of the job?
-    scoring_config: job_quality_num
-    dependency_names:
-      - helpfulness
-      - grammar
-      - tone
+    query:
+      instruction: What is the quality of the idea?
+      scoring_config: job_quality_num
+    evaluator: my-llm-committee
+    aggregator: mean
+
+  - name: overall_quality
+    query:
+      instruction: What is the overall quality of the job?
+      scoring_config: overall_quality
+    evaluator: my-llm-committee
+    aggregator: median
+
+
