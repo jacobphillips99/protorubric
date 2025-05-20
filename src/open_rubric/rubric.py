@@ -2,11 +2,11 @@ import typing as t
 
 import yaml
 
-from open_rubric.configs.aggregating import AggregatedQueryConfig, aggregator_configs
-from open_rubric.configs.base import BaseConfig
-from open_rubric.configs.evaluator import EvaluatorConfigs
-from open_rubric.configs.requirement import Requirements
-from open_rubric.configs.scoring import ScoringConfigs
+from open_rubric.aggregating import AggregatedQueryConfig, aggregator_configs
+from open_rubric.base import BaseConfig
+from open_rubric.evaluator import EvaluatorConfigs
+from open_rubric.requirement import Requirements
+from open_rubric.scoring import ScoringConfigs
 
 
 class Rubric(BaseConfig):
@@ -37,12 +37,9 @@ class Rubric(BaseConfig):
         # solve the DAG of requirements, skip for now. just loop through
         results: dict[str, AggregatedQueryConfig] = dict()
         for req in self.requirements.requirements.values():
-            if req.query.dependency_names is None:
-                result = req.evaluate(dict())
-            else:
-                dependent_results = {
-                    dep_name: results[dep_name] for dep_name in req.query.dependency_names
-                }
-                result = req.evaluate(dependent_results)
+            dependent_results = {
+                dep_name: results[dep_name] for dep_name in req.dependency_names
+            } if req.dependency_names is not None else None
+            result = req.evaluate(dependent_results)
             results[req.name] = result
         return results

@@ -7,5 +7,7 @@ scoring_configs:
       - "negative"
   - name: job_quality_num
     subtype: continuous
-    min: -5
+    min: 0
     max: 5
+    inclusive_min: True
+    inclusive_max: False

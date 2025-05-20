@@ -7,9 +7,9 @@ import typing as t
 import numpy as np
 from scipy.stats import mode
 
-from open_rubric.configs.base import BaseConfig
-from open_rubric.configs.query import QueryConfig
-from open_rubric.configs.scoring import (
+from open_rubric.base import BaseConfig
+from open_rubric.query import QueryConfig
+from open_rubric.scoring import (
     BinaryScoringConfig,
     ScoringConfig,
     continuous_scoring_configs,
@@ -17,7 +17,7 @@ from open_rubric.configs.scoring import (
 )
 
 
-class AggregatedQueryConfig(QueryConfig):
+class AggregatedQueryConfig(BaseConfig):
     queries: list[QueryConfig]
     score: t.Any
     confidence: t.Optional[t.Any] = None
@@ -31,12 +31,18 @@ class BaseAggregatingConfig(BaseConfig):
     name: str
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
 
+
+    def get_scores(self, queries: list[QueryConfig]) -> list[t.Any]:
+        return [query._score for query in queries]
+
     def check_queries(self, queries: list[QueryConfig]) -> bool:
         if self.valid_scoring_configs is not None:
-            for req in queries:
+            for query in queries:
                 assert (
-                    req.scoring_config in self.valid_scoring_configs
-                ), f"Invalid scoring config: {req.scoring_config} for query {req.name} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
+                    type(query.scoring_config) in self.valid_scoring_configs
+                ), f"Invalid scoring config: {type(query.scoring_config)} for query {str(query)} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
+        if not all([query.been_scored for query in queries]):
+            raise ValueError(f"All queries must be scored before aggregation; got queries: {queries}")
         return True
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
@@ -55,7 +61,7 @@ class NullAggregatingConfig(BaseAggregatingConfig):
         self.check_queries(queries)
         return AggregatedQueryConfig(
             queries=queries,
-            score=queries[0].score,
+            score=queries[0]._score,
             confidence=1,
         )
 
@@ -66,7 +72,7 @@ class MeanAggregatingConfig(BaseAggregatingConfig):
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = np.mean([req.score for req in queries])
+        score = np.mean(self.get_scores(queries))
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
@@ -80,7 +86,7 @@ class MedianAggregatingConfig(BaseAggregatingConfig):
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = np.median([req.score for req in queries])
+        score = np.median(self.get_scores(queries))
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
@@ -94,7 +100,7 @@ class ModeAggregatingConfig(BaseAggregatingConfig):
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        scores = [req.score for req in queries]
+        scores = self.get_scores(queries)
         score, count = mode(scores)
         conf = count / len(scores)
         return AggregatedQueryConfig(
@@ -110,7 +116,7 @@ class AllAggregatingConfig(BaseAggregatingConfig):
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = all([req.score for req in queries])
+        score = all(self.get_scores(queries))
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
@@ -124,7 +130,7 @@ class AnyAggregatingConfig(BaseAggregatingConfig):
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = any([req.score for req in queries])
+        score = any(self.get_scores(queries))
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
@@ -138,7 +144,7 @@ class MaxAggregatingConfig(BaseAggregatingConfig):
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = max([req.score for req in queries])
+        score = max(self.get_scores(queries))
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
@@ -152,7 +158,7 @@ class MinAggregatingConfig(BaseAggregatingConfig):
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = min([req.score for req in queries])
+        score = min(self.get_scores(queries))
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
@@ -184,7 +190,7 @@ class WeightedSumAggregatingConfig(BaseAggregatingConfig):
             queries
         ), f"Weights must be the same length as queries; got weights: {weights} and queries: {queries}"
         self.check_queries(queries)
-        score = sum([req.score * weight for req, weight in zip(queries, weights)])
+        score = sum([query._score * weight for query, weight in zip(queries, weights)])
         return AggregatedQueryConfig(
             queries=queries,
             score=score,

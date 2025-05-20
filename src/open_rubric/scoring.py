@@ -2,7 +2,7 @@ import typing as t
 
 import yaml
 
-from open_rubric.configs.base import BaseConfig
+from open_rubric.base import BaseConfig
 
 """
 todo others -- likert (discrete and ordered)
@@ -37,6 +37,9 @@ class ScoringConfig(BaseConfig):
         with open(path, "r") as f:
             config = yaml.safe_load(f)
         return cls.from_data(config, **kwargs)
+    
+    def to_prompt(self) -> str:
+        raise NotImplementedError(f"Scoring config {self.name} must implement to_prompt")
 
 
 class DiscreteScoringConfig(ScoringConfig):
@@ -45,11 +48,22 @@ class DiscreteScoringConfig(ScoringConfig):
     type: t.Literal["discrete"] = "discrete"
     options: list[t.Any]
 
+    # TODO
+    def to_prompt(self) -> str:
+        return f"""
+Score the response based on the following options: {self.options}
+Respond with ONLY one of the options.
+        """.strip()
+    
+    def parse_response(self, response: str) -> t.Any:
+        assert response in self.options, f"Response {response} not in options {self.options}"
+        return response
+
 
 class BinaryScoringConfig(DiscreteScoringConfig):
     name: str = "binary"
     subtype: str = "binary"
-    options: list[bool] = [True, False]
+    options: list[str] = ['true', 'false'] # JSON compatible
 
 
 class CategoricalScoringConfig(DiscreteScoringConfig):
@@ -64,6 +78,20 @@ class ContinuousScoringConfig(ScoringConfig):
     type: t.Literal["continuous"] = "continuous"
     min: t.Optional[t.Union[int, float]]
     max: t.Optional[t.Union[int, float]]
+    inclusive_min: bool = True
+    inclusive_max: bool = True
+
+    # TODO
+    def to_prompt(self) -> str:
+        scoring_range = f"{'[' if self.inclusive_min else '('}{self.min}, {self.max}{']' if self.inclusive_max else ')'}"
+        return f"""Score the response by providing an answer based on the following range: {scoring_range}. Respond with ONLY that number.""".strip()
+
+    def parse_response(self, response: str) -> t.Union[int, float]:
+        score = float(response)
+        assert score > self.min if self.inclusive_min else score >= self.min, f"Score {score} is less than minimum {self.min}"
+        assert score < self.max if self.inclusive_max else score <= self.max, f"Score {score} is greater than maximum {self.max}"
+        return score
+
 
 
 class UnitScalarScoringConfig(ContinuousScoringConfig):

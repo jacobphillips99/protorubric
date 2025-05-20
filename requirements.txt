@@ -1,0 +1,8 @@
+pydantic
+numpy
+scipy
+pyyaml
+litellm
+# rate limiter setup
+git+https://github.com/jacobphillips99/llm-rate-limiter.git
+

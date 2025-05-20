@@ -2,23 +2,25 @@ import typing as t
 
 import yaml
 
-from open_rubric.configs.aggregating import (
+from open_rubric.aggregating import (
     AggregatedQueryConfig,
     AggregatedQueryConfigs,
     BaseAggregatingConfig,
     NullAggregatingConfig,
 )
-from open_rubric.configs.base import BaseConfig
-from open_rubric.configs.evaluator import BaseEvaluatorConfig, EvaluatorConfigs
-from open_rubric.configs.query import QueryConfig
-from open_rubric.configs.scoring import ScoringConfigs
+from open_rubric.base import BaseConfig
+from open_rubric.evaluator import BaseEvaluatorConfig, EvaluatorConfigs
+from open_rubric.query import QueryConfig
+from open_rubric.scoring import ScoringConfigs
 
 
 class RequirementConfig(BaseConfig):
     name: str
     query: QueryConfig
     evaluator: BaseEvaluatorConfig
+    dependency_names: t.Optional[list[str]] = None
     aggregator: BaseAggregatingConfig = NullAggregatingConfig()
+    _result: t.Optional[AggregatedQueryConfig] = None
 
     @classmethod
     def from_data(cls, data: dict, **kwargs: t.Any) -> "RequirementConfig":
@@ -44,6 +46,7 @@ class RequirementConfig(BaseConfig):
     def evaluate(self, dependent_results: dict[str, t.Any]) -> AggregatedQueryConfig:
         evaluated_queries = self.evaluator(self.query, dependent_results)
         aggregated_query = self.aggregator(evaluated_queries)
+        self._result = aggregated_query
         return aggregated_query
 
 
@@ -66,9 +69,9 @@ class Requirements(BaseConfig):
         assert len(all_names) == len(set(all_names)), f"Duplicate requirement names! {all_names}"
         requirement_dict = {req.name: req for req in reqs}
         dependency_dict = {
-            req.name: req.query.dependency_names
+            req.name: req.dependency_names
             for req in reqs
-            if req.query.dependency_names is not None
+            if req.dependency_names is not None
         }
         return cls(requirements=requirement_dict, dependencies=dependency_dict)
 
