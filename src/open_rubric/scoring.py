@@ -1,13 +1,17 @@
+"""
+Determines methods of scoring rubric items, like unit_scalar, binary, categorical, etc.
+Defines basic interface for scoring configs and base classes for discrete and continuous scoring configs.
+Configs can be defined in YAML files and loaded into the scoring configs object; recursive loading is supported.
+
+See example_rubrics/test_rubric.yaml for an example of a top-level scoring config which contains other scoring configs.
+"""
+
 import typing as t
 
 import yaml
 from pydantic import model_validator
 
 from open_rubric.base import BaseConfig
-
-"""
-todo others -- likert (discrete and ordered)
-"""
 
 
 class ScoringConfig(BaseConfig):
@@ -154,7 +158,9 @@ class ScoringConfigs(BaseConfig):
             list_data = data
         configs: list[ScoringConfig] = []
         for item in list_data:
-            if isinstance(item, str) and item.endswith(".yaml"):  # recursive!
+            if isinstance(item, str) and item.endswith(
+                ".yaml"
+            ):  # recursive loading of scoring configs
                 configs.extend(ScoringConfigs.from_yaml(item, **kwargs).scoring_configs.values())
             else:
                 configs.append(ScoringConfig.from_data(item, **kwargs))

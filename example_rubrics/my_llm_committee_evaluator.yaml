@@ -1,0 +1,9 @@
+evaluators:
+  - name: my-llm-committee
+    type: llm-ensemble
+    models:
+      - gpt-4.1
+      - gpt-4.1-mini
+      - model: gpt-4.1-nano
+        n_samples: 3
+    n_samples_per_model: 2

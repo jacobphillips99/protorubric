@@ -2,14 +2,14 @@ import typing as t
 
 import yaml
 
-from open_rubric.aggregating import (
+from open_rubric.aggregators import (
     AggregatedQueryConfig,
-    AggregatedQueryConfigs,
+    AggregatorConfigs,
     BaseAggregatingConfig,
     NullAggregatingConfig,
 )
 from open_rubric.base import BaseConfig
-from open_rubric.evaluator import BaseEvaluatorConfig, EvaluatorConfigs
+from open_rubric.evaluators import BaseEvaluatorConfig, EvaluatorConfigs
 from open_rubric.query import QueryConfig
 from open_rubric.scoring import ScoringConfigs
 
@@ -37,13 +37,15 @@ class RequirementConfig(BaseConfig):
         data["evaluator"] = evaluator
 
         # replace string aggregator in data with AggregatedQueryConfig object
-        aggregator_configs: AggregatedQueryConfigs = kwargs["aggregator_configs"]
+        aggregator_configs: AggregatorConfigs = kwargs["aggregator_configs"]
         agg_name = data.get("aggregator", "null")
         aggregator: BaseAggregatingConfig = aggregator_configs.get_config_by_name(agg_name)()
         data["aggregator"] = aggregator
         return cls(**data)
 
-    def evaluate(self, dependent_results: dict[str, t.Any]) -> AggregatedQueryConfig:
+    def evaluate(
+        self, dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None
+    ) -> AggregatedQueryConfig:
         evaluated_queries = self.evaluator(self.query, dependent_results)
         aggregated_query = self.aggregator(evaluated_queries)
         self._result = aggregated_query

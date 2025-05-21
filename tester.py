@@ -1,8 +1,8 @@
-from open_rubric.models.model import Model
 from open_rubric.rubric import Rubric
 
+rubric_path = "example_rubrics/test_rubric.yaml"
+
 if __name__ == "__main__":
-    model = Model()
-    rubric = Rubric.from_yaml("test_rubric.yaml")
+    rubric = Rubric.from_yaml(rubric_path)
     results = rubric.solve()
-    breakpoint()
+    # breakpoint()

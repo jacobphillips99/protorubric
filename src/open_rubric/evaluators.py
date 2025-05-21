@@ -4,6 +4,7 @@ import typing as t
 import yaml
 from pydantic import model_validator
 
+from open_rubric.aggregators import AggregatedQueryConfig
 from open_rubric.base import BaseConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
@@ -23,10 +24,18 @@ class BaseEvaluatorConfig(BaseConfig):
                 return EnsembledModelEvaluatorConfig.from_data(data, **kwargs)
         raise ValueError(f"Invalid evaluator type: {data['type']}")
 
+    @classmethod
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "BaseEvaluatorConfig":
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        if "evaluators" in data:
+            data = data["evaluators"]
+        return cls.from_data(data, **kwargs)
+
     def __call__(
         self,
         query: QueryConfig,
-        dependent_results: t.Optional[dict[str, t.Any]] = None,
+        dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
         raise NotImplementedError(f"Evaluator {self.name} must implement __call__")
@@ -53,7 +62,7 @@ class ModelEvaluatorConfig(BaseEvaluatorConfig):
     def __call__(
         self,
         query: QueryConfig,
-        dependent_results: t.Optional[dict[str, t.Any]] = None,
+        dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
         prompt = f"""
@@ -133,7 +142,7 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
     def __call__(
         self,
         query: QueryConfig,
-        dependent_results: t.Optional[dict[str, t.Any]] = None,
+        dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
         results = []
@@ -147,8 +156,22 @@ class EvaluatorConfigs(BaseConfig):
 
     @classmethod
     def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "EvaluatorConfigs":
-        evaluators = [BaseEvaluatorConfig.from_data(evaluator) for evaluator in data]
+        evaluators: list[BaseEvaluatorConfig] = []
+        for evaluator in data:
+            if isinstance(evaluator, str) and evaluator.endswith(".yaml"):
+                # recursive loading of evaluators
+                evaluators.extend(EvaluatorConfigs.from_yaml(evaluator).evaluators.values())
+            else:
+                evaluators.append(BaseEvaluatorConfig.from_data(evaluator))
         return cls(evaluators={evaluator.name: evaluator for evaluator in evaluators})
+
+    @classmethod
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "EvaluatorConfigs":
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        if "evaluators" in data:
+            data = data["evaluators"]
+        return cls.from_data(data, **kwargs)
 
     def get_config_by_name(self, name: str) -> BaseEvaluatorConfig:
         return self.evaluators[name]

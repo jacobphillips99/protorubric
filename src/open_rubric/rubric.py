@@ -2,16 +2,18 @@ import typing as t
 
 import yaml
 
-from open_rubric.aggregating import AggregatedQueryConfig, aggregator_configs
+from open_rubric.aggregators import AggregatedQueryConfig, AggregatorConfigs, aggregator_configs
 from open_rubric.base import BaseConfig
-from open_rubric.evaluator import EvaluatorConfigs
+from open_rubric.evaluators import EvaluatorConfigs
 from open_rubric.requirement import Requirements
 from open_rubric.scoring import ScoringConfigs
 
 
 class Rubric(BaseConfig):
-    scoring_configs: ScoringConfigs
     requirements: Requirements
+    scoring_configs: ScoringConfigs
+    evaluators: EvaluatorConfigs
+    aggregator_configs: AggregatorConfigs
 
     @classmethod
     def from_data(cls, data: t.Any, **kwargs: t.Any) -> "Rubric":
@@ -25,7 +27,12 @@ class Rubric(BaseConfig):
             evaluator_configs=evaluator_configs,
             aggregator_configs=aggregator_configs,
         )
-        return cls(scoring_configs=scoring_configs, requirements=requirements)
+        return cls(
+            requirements=requirements,
+            scoring_configs=scoring_configs,
+            evaluators=evaluator_configs,
+            aggregator_configs=aggregator_configs,
+        )
 
     @classmethod
     def from_yaml(cls, path: str, **kwargs: t.Any) -> "Rubric":

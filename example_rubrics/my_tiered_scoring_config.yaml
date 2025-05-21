@@ -1,0 +1,9 @@
+scoring_configs:
+  - name: likert
+    subtype: discrete
+    options:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5

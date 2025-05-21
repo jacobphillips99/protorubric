@@ -1,7 +1,7 @@
 scoring_configs:
   - binary
   - unit_scalar
-  - my_scoring_config.yaml
+  - example_rubrics/my_scoring_config.yaml
   - name: overall_quality
     subtype: continuous
     min: 0
@@ -11,20 +11,11 @@ evaluators:
   - name: my-sole-llm
     type: llm
     model: gpt-4.1
-
   - name: my-triple-llm
     type: llm
     model: gpt-4.1-mini
     n_samples: 3
-
-  - name: my-llm-committee
-    type: llm-ensemble
-    models:
-      - gpt-4.1
-      - gpt-4.1-mini
-      - model: gpt-4.1-nano
-        n_samples: 3
-    n_samples_per_model: 2
+  - example_rubrics/my_llm_committee_evaluator.yaml
 
 requirements:
   - name: helpfulness

@@ -215,7 +215,7 @@ name_to_aggregating_config = {
 all_aggregating_configs = list(name_to_aggregating_config.values())
 
 
-class AggregatedQueryConfigs(BaseConfig):
+class AggregatorConfigs(BaseConfig):
     aggregators: dict[str, type[BaseAggregatingConfig]] = name_to_aggregating_config
 
     def get_config_by_name(self, name: str) -> type[BaseAggregatingConfig]:
@@ -224,4 +224,4 @@ class AggregatedQueryConfigs(BaseConfig):
         return self.aggregators[name]
 
 
-aggregator_configs = AggregatedQueryConfigs()
+aggregator_configs = AggregatorConfigs()

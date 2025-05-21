@@ -101,13 +101,15 @@ class Model:
         try:
             # construct and await litellm request
             payload = construct_payload(model_request, messages)
-            response = await litellm.acompletion(**payload)
+            litellm_response = await litellm.acompletion(**payload)
             response_ms = time.time() - tic
-            response = ModelResponse.from_litellm_response(response, model_request, response_ms)
+            model_response: ModelResponse = ModelResponse.from_litellm_response(
+                litellm_response, model_request, response_ms
+            )
             # update the rate limiter with the actual token consumption
-            token_usage = response.usage.get("total_tokens", estimated_token_consumption)
+            token_usage = model_response.usage.get("total_tokens", estimated_token_consumption)
             rate_limiter.record_usage(provider, model_request.model, token_usage)
-            return response
+            return model_response
         except Exception as e:
             logger.error(
                 f"Error generating response for {model_request.model}: {str(e)}; {traceback.format_exc()}"

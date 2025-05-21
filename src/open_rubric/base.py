@@ -19,6 +19,7 @@ class BaseConfig(BaseModel):
     @classmethod
     def from_data_or_yaml(cls, data: t.Any | str, **kwargs: t.Any) -> "BaseConfig":
         if isinstance(data, str) and data.endswith(".yaml"):
+            print(f"loading from yaml: {data}")
             return cls.from_yaml(data, **kwargs)
         else:
             return cls.from_data(data, **kwargs)
