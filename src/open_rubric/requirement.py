@@ -25,6 +25,10 @@ class RequirementConfig(BaseConfig):
     @classmethod
     def from_data(cls, data: dict, **kwargs: t.Any) -> "RequirementConfig":
         # replace string scoring_config in Query with ScoringConfig object
+        assert all(
+            k in kwargs for k in ["scoring_configs", "evaluator_configs", "aggregator_configs"]
+        ), f"Missing required kwargs [scoring_configs, evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
+
         scoring_configs: ScoringConfigs = kwargs["scoring_configs"]
         query = data["query"]
         query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
@@ -79,15 +83,11 @@ class Requirements(BaseConfig):
 
     @classmethod
     def from_yaml(cls, path: str, **kwargs: t.Any) -> "Requirements":
-        assert (
-            "scoring_configs" in kwargs
-        ), f"Scoring configs must be provided for requirements; got kwargs: {kwargs}"
-        scoring_configs: ScoringConfigs = kwargs["scoring_configs"]
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         if isinstance(data, dict):
             data = data["requirements"]
-        return cls.from_data(data, scoring_configs=scoring_configs, **kwargs)
+        return cls.from_data(data, **kwargs)
 
     def get_requirement_by_name(self, name: str) -> RequirementConfig:
         if name not in self.requirements:

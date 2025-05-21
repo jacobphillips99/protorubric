@@ -172,3 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# ignore data samples
+example_rubrics/healthbench.jsonl
+example_rubrics/hb_df.csv

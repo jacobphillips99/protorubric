@@ -3,5 +3,7 @@ numpy
 scipy
 pyyaml
 litellm
+pandas
+
 # rate limiter setup
 git+https://github.com/jacobphillips99/llm-rate-limiter.git

@@ -59,7 +59,7 @@ class Model:
     def check_models_available(self) -> list[ModelResponse | bool]:
         return asyncio.run(self.acheck_models_available())
 
-    def _prepare_user_content(self, model_input: ModelInput) -> list[dict[str, t.Any]]:
+    def _prepare_content(self, model_input: ModelInput) -> list[dict[str, t.Any]]:
         text_content = {"type": "text", "text": model_input.prompt}
         if model_input.images:
             image_content = [
@@ -74,18 +74,40 @@ class Model:
         if model_request.system_prompt:
             messages.append({"role": "system", "content": model_request.system_prompt})
 
-        content = self._prepare_user_content(model_request.model_input)
-        content.append({"type": "text", "text": "Begin your response below."})
-        user_message: dict[str, t.Any] = {"role": "user", "content": content}
-        messages.append(user_message)
+        if model_request.prepared_messages:
+            for prepared_message in model_request.prepared_messages:
+                content = self._prepare_content(prepared_message)
+                prepared_message_dict: dict[str, t.Any] = {
+                    "role": prepared_message.role,
+                    "content": content,
+                }
+                messages.append(prepared_message_dict)
+
+        if model_request.model_input:
+            content = self._prepare_content(model_request.model_input)
+            content.append(
+                {"type": "text", "text": "Answer the above and begin your response below."}
+            )
+            message: dict[str, t.Any] = {"role": model_request.model_input.role, "content": content}
+            messages.append(message)
         return messages
 
     def _get_estimated_tokens(self, model_request: ModelRequest) -> int:
-        text_tokens = len(model_request.model_input.prompt) // 2
+        text_tokens = 0
+        image_tokens = 0
         # TODO! make a better estimate. add estimate tokens to llm_rate_limiter package
-        image_tokens = (
-            len(model_request.model_input.images) * 500 if model_request.model_input.images else 0
-        )
+        if model_request.model_input:
+            text_tokens += len(model_request.model_input.prompt) // 2
+            image_tokens += (
+                len(model_request.model_input.images) * 500
+                if model_request.model_input.images
+                else 0
+            )
+        if model_request.prepared_messages:
+            for prepared_message in model_request.prepared_messages:
+                text_tokens += len(prepared_message.prompt) // 2
+                image_tokens += len(prepared_message.images) * 500 if prepared_message.images else 0
+
         max_tokens = model_request.model_kwargs.max_tokens
         # assume half usage of max tokens
         return (text_tokens + image_tokens) + int(max_tokens / 2)

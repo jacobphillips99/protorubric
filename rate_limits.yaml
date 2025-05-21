@@ -35,23 +35,23 @@ anthropic:
     requests_per_minute: 1_000
     tokens_per_minute: 100_000
 
-# gemini:
-#   gemini/gemini-2.0-flash:
-#     requests_per_minute: 2_000
-#     tokens_per_minute: 4_000_000
+gemini:
+  gemini/gemini-2.0-flash:
+    requests_per_minute: 2_000
+    tokens_per_minute: 4_000_000
 
-#   gemini/gemini-2.0-pro-exp:
-#     requests_per_minute: 20
-#     tokens_per_minute: 2_000_000
+  gemini/gemini-2.0-pro-exp:
+    requests_per_minute: 20
+    tokens_per_minute: 2_000_000
 
-#   gemini/gemini-2.5-pro-preview-03-25:
-#     requests_per_minute: 150
-#     tokens_per_minute: 2_000_000
+  gemini/gemini-2.5-pro-preview-03-25:
+    requests_per_minute: 150
+    tokens_per_minute: 2_000_000
 
-#   gemini/gemini-2.5-flash-preview-04-17:
-#     requests_per_minute: 150
-#     tokens_per_minute: 2_000_000
+  gemini/gemini-2.5-flash-preview-04-17:
+    requests_per_minute: 150
+    tokens_per_minute: 2_000_000
 
-#   gemini/gemini-2.5-pro-preview-05-06:
-#     requests_per_minute: 150
-#     tokens_per_minute: 2_000_000
+  gemini/gemini-2.5-pro-preview-05-06:
+    requests_per_minute: 150
+    tokens_per_minute: 2_000_000

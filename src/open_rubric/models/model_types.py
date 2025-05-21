@@ -15,6 +15,7 @@ class ImageInput(BaseModel):
 class ModelInput(BaseModel):
     prompt: str
     images: t.Optional[list[ImageInput]] = None
+    role: str = "user"
 
 
 class ModelKwargs(BaseModel):
@@ -28,12 +29,13 @@ class ModelKwargs(BaseModel):
 
 class ModelRequest(BaseModel):
     model: str
-    model_input: ModelInput
+    model_input: t.Optional[ModelInput] = None
     provider: str
     model_kwargs: ModelKwargs = Field(default_factory=ModelKwargs)
     timeout: float = 120.0
     extra_kwargs: t.Optional[dict[str, t.Any]] = None
     system_prompt: t.Optional[str] = None
+    prepared_messages: t.Optional[list[ModelInput]] = None
 
     @model_validator(mode="before")
     def set_provider(cls, data: dict) -> dict:
@@ -42,6 +44,12 @@ class ModelRequest(BaseModel):
             # result is (model, provider, key, endpoint)
             provider = litellm.get_llm_provider(model)[1]
             data["provider"] = provider
+        return data
+
+    @model_validator(mode="before")
+    def check_input_or_prepared_messages(cls, data: dict) -> dict:
+        if not data.get("model_input") and not data.get("prepared_messages"):
+            raise ValueError("model_input or prepared_messages must be provided!")
         return data
 
 
