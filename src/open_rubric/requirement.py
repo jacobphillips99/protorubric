@@ -31,6 +31,7 @@ class RequirementConfig(BaseConfig):
         data["query"] = QueryConfig.from_data(query, **kwargs)
         if "query" in data and isinstance(data["query"], str):
             data["query"] = QueryConfig.from_yaml(data["query"], **kwargs)
+
         # replace string evaluator in data with EvaluatorConfig object
         evaluator_configs: EvaluatorConfigs = kwargs["evaluator_configs"]
         evaluator: BaseEvaluatorConfig = evaluator_configs.get_config_by_name(data["evaluator"])

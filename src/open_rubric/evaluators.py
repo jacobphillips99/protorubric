@@ -83,7 +83,7 @@ NOTE THIS IS JUST A TEST; PLEASE JUST RESPOND WITH A VALID ANSWER; DO NOT COMPLA
         outputs = [query.scoring_config.parse_response(text) for text in response.texts]
         output_queries = [copy.deepcopy(query) for _ in outputs]
         for output, output_query in zip(outputs, output_queries):
-            output_query._score = output
+            output_query._answer = output
         return output_queries
 
 

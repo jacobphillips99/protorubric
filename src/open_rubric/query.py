@@ -2,6 +2,7 @@ import typing as t
 
 import yaml
 
+from open_rubric.answers import AnswerConfig
 from open_rubric.base import BaseConfig
 from open_rubric.scoring import ScoringConfig
 
@@ -11,7 +12,7 @@ class QueryConfig(BaseConfig):
     inputs: t.Optional[list[str] | str] = None
     example: t.Optional[str] = None
     scoring_config: ScoringConfig
-    _score: t.Optional[t.Any] = None
+    _answer: t.Optional[AnswerConfig] = None
 
     @classmethod
     def from_data(cls, data: dict, **kwargs: t.Any) -> "QueryConfig":
@@ -28,5 +29,9 @@ class QueryConfig(BaseConfig):
         return cls.from_data(data, **kwargs)
 
     @property
-    def been_scored(self) -> bool:
-        return self._score is not None
+    def been_answered(self) -> bool:
+        return self._answer is not None
+
+    @property
+    def score(self) -> t.Any:
+        return self._answer.score if self._answer else None

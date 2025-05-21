@@ -6,11 +6,18 @@ Configs can be defined in YAML files and loaded into the scoring configs object;
 See example_rubrics/test_rubric.yaml for an example of a top-level scoring config which contains other scoring configs.
 """
 
+import json
 import typing as t
 
 import yaml
 from pydantic import model_validator
 
+from open_rubric.answers import (
+    AnyAnswerConfig,
+    BoolAnswerConfig,
+    FloatAnswerConfig,
+    StringAnswerConfig,
+)
 from open_rubric.base import BaseConfig
 
 
@@ -63,18 +70,27 @@ class DiscreteScoringConfig(ScoringConfig):
         ), f"All options must be of type {type_of_options}; got {options}"
         return self
 
-    # TODO
     def to_prompt(self) -> str:
         return f"""
-Score the response based on the following options: {self.options}
-Respond with ONLY one of the options.
-        """.strip()
+Score the response based on the following options: {self.options} and provide a reasoning for your score.
+Respond with a JSON object with the following keys:
+- score: the score you chose from the options
+- reasoning: the reasoning for your score
+Use the following format:
+{{
+    "score": <score>,
+    "reasoning": <reasoning>
+}}
+Do not include and other text; do not use "```json" or "```" anywhere in your response.
+""".strip()
 
-    def parse_response(self, response: str) -> t.Any:
+    def parse_response(self, response: str) -> AnyAnswerConfig:
+        data = json.loads(response)
         type_of_options = type(self.options[0])
-        score = type_of_options(response)
-        assert score in self.options, f"Response {response} not in options {self.options}"
-        return score
+        parsed_score = type_of_options(data["score"])
+        assert parsed_score in self.options, f"Response {response} not in options {self.options}"
+        reasoning = data.get("reasoning", None)
+        return AnyAnswerConfig(score=parsed_score, reasoning=reasoning)
 
 
 class BinaryScoringConfig(DiscreteScoringConfig):
@@ -82,15 +98,23 @@ class BinaryScoringConfig(DiscreteScoringConfig):
     subtype: str = "binary"
     options: list[str] = ["true", "false"]  # JSON compatible
 
-    def parse_response(self, response: str) -> bool:
-        assert response in self.options, f"Response {response} not in options {self.options}"
-        return response == "true"
+    def parse_response(self, response: str) -> BoolAnswerConfig:
+        data = json.loads(response)
+        assert data["score"] in self.options, f"Response {response} not in options {self.options}"
+        reasoning = data.get("reasoning", None)
+        return BoolAnswerConfig(score=(data["score"] == "true"), reasoning=reasoning)
 
 
 class CategoricalScoringConfig(DiscreteScoringConfig):
     name: str = "categorical"
     subtype: str = "categorical"
     options: list[str]
+
+    def parse_response(self, response: str) -> StringAnswerConfig:
+        data = json.loads(response)
+        assert data["score"] in self.options, f"Response {response} not in options {self.options}"
+        reasoning = data.get("reasoning", None)
+        return StringAnswerConfig(score=data["score"], reasoning=reasoning)
 
 
 class ContinuousScoringConfig(ScoringConfig):
@@ -102,22 +126,33 @@ class ContinuousScoringConfig(ScoringConfig):
     inclusive_min: bool = True
     inclusive_max: bool = True
 
-    # TODO
     def to_prompt(self) -> str:
         scoring_range = f"{'[' if self.inclusive_min else '('}{self.min}, {self.max}{']' if self.inclusive_max else ')'}"
-        return f"""Score the response by providing an answer based on the following range: {scoring_range}. Respond with ONLY that number.""".strip()
+        return f"""
+Score the response by providing an answer based on the following range: {scoring_range}. Respond with ONLY that number.
+Respond with a JSON object with the following keys:
+- score: the score you chose from the range
+- reasoning: the reasoning for your score
+Use the following format:
+{{
+    "score": <score>,
+    "reasoning": <reasoning>
+}}
+Do not include and other text; do not use "```json" or "```" anywhere in your response.
+""".strip()
 
-    def parse_response(self, response: str) -> t.Union[int, float]:
-        score = float(response)
+    def parse_response(self, response: str) -> FloatAnswerConfig:
+        data = json.loads(response)
+        score_value = float(data["score"])
         if self.min is not None:
             assert (
-                score > self.min if not self.inclusive_min else score >= self.min
-            ), f"Score {score} is less than minimum {self.min}"
+                score_value > self.min if not self.inclusive_min else score_value >= self.min
+            ), f"Score {score_value} is less than minimum {self.min}"
         if self.max is not None:
             assert (
-                score < self.max if not self.inclusive_max else score <= self.max
-            ), f"Score {score} is greater than maximum {self.max}"
-        return score
+                score_value < self.max if not self.inclusive_max else score_value <= self.max
+            ), f"Score {score_value} is greater than maximum {self.max}"
+        return FloatAnswerConfig(score=score_value)
 
 
 class UnitScalarScoringConfig(ContinuousScoringConfig):

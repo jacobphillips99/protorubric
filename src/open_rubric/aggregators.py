@@ -32,7 +32,7 @@ class BaseAggregatingConfig(BaseConfig):
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
 
     def get_scores(self, queries: list[QueryConfig]) -> list[t.Any]:
-        return [query._score for query in queries]
+        return [query.score for query in queries]
 
     def check_queries(self, queries: list[QueryConfig]) -> bool:
         if self.valid_scoring_configs is not None:
@@ -40,9 +40,9 @@ class BaseAggregatingConfig(BaseConfig):
                 assert (
                     type(query.scoring_config) in self.valid_scoring_configs
                 ), f"Invalid scoring config: {type(query.scoring_config)} for query {str(query)} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
-        if not all([query.been_scored for query in queries]):
+        if not all([query.been_answered for query in queries]):
             raise ValueError(
-                f"All queries must be scored before aggregation; got queries: {queries}"
+                f"All queries must be answered before aggregation; got queries: {queries}"
             )
         return True
 
@@ -62,7 +62,7 @@ class NullAggregatingConfig(BaseAggregatingConfig):
         self.check_queries(queries)
         return AggregatedQueryConfig(
             queries=queries,
-            score=queries[0]._score,
+            score=queries[0].score,
             confidence=1,
         )
 
@@ -191,7 +191,7 @@ class WeightedSumAggregatingConfig(BaseAggregatingConfig):
             queries
         ), f"Weights must be the same length as queries; got weights: {weights} and queries: {queries}"
         self.check_queries(queries)
-        score = sum([query._score * weight for query, weight in zip(queries, weights)])
+        score = sum([query.score * weight for query, weight in zip(queries, weights)])
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
