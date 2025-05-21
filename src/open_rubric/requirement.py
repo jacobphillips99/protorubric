@@ -44,10 +44,10 @@ class RequirementConfig(BaseConfig):
         data["aggregator"] = aggregator
         return cls(**data)
 
-    def evaluate(
+    async def async_evaluate(
         self, dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None
     ) -> AggregatedQueryConfig:
-        evaluated_queries = self.evaluator(self.query, dependent_results)
+        evaluated_queries = await self.evaluator.async_call(self.query, dependent_results)
         aggregated_query = self.aggregator(evaluated_queries)
         self._result = aggregated_query
         print(
@@ -74,9 +74,7 @@ class Requirements(BaseConfig):
         all_names = [req.name for req in reqs]
         assert len(all_names) == len(set(all_names)), f"Duplicate requirement names! {all_names}"
         requirement_dict = {req.name: req for req in reqs}
-        dependency_dict = {
-            req.name: req.dependency_names for req in reqs if req.dependency_names is not None
-        }
+        dependency_dict = {req.name: req.dependency_names for req in reqs}
         return cls(requirements=requirement_dict, dependencies=dependency_dict)
 
     @classmethod

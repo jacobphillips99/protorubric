@@ -2,7 +2,7 @@ scoring_configs:
   - binary
   - unit_scalar
   - example_rubrics/my_scoring_config.yaml
-  - name: overall_quality
+  - name: overall-quality-scoring-config
     subtype: continuous
     min: 0
     max: 100
@@ -18,12 +18,6 @@ evaluators:
   - example_rubrics/my_llm_committee_evaluator.yaml
 
 requirements:
-  - name: helpfulness
-    query:
-      instruction: Is the response helpful?
-      scoring_config: unit_scalar
-    evaluator: my-sole-llm
-
   - name: grammar
     query:
       instruction: Is the response grammatically correct?
@@ -34,19 +28,31 @@ requirements:
   - name: tone
     query:
       instruction: What tone does the response have?
-      scoring_config: tone
+      scoring_config: tone-scoring-config
     evaluator: my-sole-llm
 
   - name: job_quality
     query:
       instruction: What is the quality of the idea?
-      scoring_config: job_quality_num
+      scoring_config: job-quality-num-scoring-config
+    dependency_names:
+      - grammar
+      - tone
+      - helpfulness
     evaluator: my-llm-committee
     aggregator: mean
 
   - name: overall_quality
     query:
       instruction: What is the overall quality of the job?
-      scoring_config: overall_quality
+      scoring_config: overall-quality-scoring-config
+    dependency_names:
+      - job_quality
     evaluator: my-llm-committee
     aggregator: median
+
+  - name: helpfulness
+    query:
+      instruction: Is the response helpful?
+      scoring_config: unit_scalar
+    evaluator: my-sole-llm

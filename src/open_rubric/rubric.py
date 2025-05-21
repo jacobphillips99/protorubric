@@ -1,11 +1,14 @@
+import asyncio
+import time
 import typing as t
 
 import yaml
 
 from open_rubric.aggregators import AggregatedQueryConfig, AggregatorConfigs, aggregator_configs
 from open_rubric.base import BaseConfig
+from open_rubric.dag import topological_levels
 from open_rubric.evaluators import EvaluatorConfigs
-from open_rubric.requirement import Requirements
+from open_rubric.requirement import RequirementConfig, Requirements
 from open_rubric.scoring import ScoringConfigs
 
 
@@ -41,15 +44,39 @@ class Rubric(BaseConfig):
         return cls.from_data(data, **kwargs)
 
     def solve(self) -> dict[str, AggregatedQueryConfig]:
-        # solve the DAG of requirements, skip for now. just loop through as the reqs are provided in a topological sort
-        # TODO: solve the DAG of requirements
+        # solve the DAG of requirements; prepend any requirements without dependencies
         results: dict[str, AggregatedQueryConfig] = dict()
-        for req in self.requirements.requirements.values():
+        level_sorted_reqs = [
+            [self.requirements.get_requirement_by_name(req) for req in level]
+            for level in topological_levels(self.requirements.dependencies)
+        ]
+        print(f"\n\nFound {len(level_sorted_reqs)} levels")
+        for i, level in enumerate(level_sorted_reqs):
+            print("--------------------------------")
+            print(
+                f"Solving level {i + 1} of {len(level_sorted_reqs)} over requirements: {[req.name for req in level]}"
+            )
+            tic = time.time()
+            level_results = asyncio.run(self.solve_level(level, results))
+            toc = time.time()
+            print(
+                f"Solved level {i + 1} of {len(level_sorted_reqs)} in {round(toc - tic, 2)} seconds"
+            )
+            results.update(level_results)
+        return results
+
+    async def solve_level(
+        self, level: list[RequirementConfig], results: dict[str, AggregatedQueryConfig]
+    ) -> dict[str, AggregatedQueryConfig]:
+        payloads: list[tuple[RequirementConfig, dict[str, t.Any]]] = []
+        for req in level:
             dependent_results = (
                 {dep_name: results[dep_name] for dep_name in req.dependency_names}
                 if req.dependency_names is not None
                 else None
             )
-            result = req.evaluate(dependent_results)
-            results[req.name] = result
-        return results
+            payloads.append((req, {"dependent_results": dependent_results}))
+        agg_query_results = await asyncio.gather(
+            *[req.async_evaluate(**payload) for req, payload in payloads]
+        )
+        return {req.name: aqr for req, aqr in zip(level, agg_query_results)}

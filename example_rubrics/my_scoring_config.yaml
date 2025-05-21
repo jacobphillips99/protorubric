@@ -1,11 +1,11 @@
 scoring_configs:
-  - name: tone
+  - name: tone-scoring-config
     subtype: categorical
     options:
       - "positive"
       - "neutral"
       - "negative"
-  - name: job_quality_num
+  - name: job-quality-num-scoring-config
     subtype: continuous
     min: 0
     max: 5

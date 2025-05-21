@@ -12,6 +12,15 @@ openai:
   o3:
     requests_per_minute: 10_000
     tokens_per_minute: 2_000_000
+  gpt-4.1:
+    requests_per_minute: 10_000
+    tokens_per_minute: 2_000_000
+  gpt-4.1-mini:
+    requests_per_minute: 10_000
+    tokens_per_minute: 10_000_000
+  gpt-4.1-nano:
+    requests_per_minute: 10_000
+    tokens_per_minute: 10_000_000
 
 anthropic:
   claude-3-7-sonnet-20250219:

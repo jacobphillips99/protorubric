@@ -1,6 +1,8 @@
 import copy
+import traceback
 import typing as t
 
+import litellm
 import yaml
 from pydantic import model_validator
 
@@ -32,34 +34,36 @@ class BaseEvaluatorConfig(BaseConfig):
             data = data["evaluators"]
         return cls.from_data(data, **kwargs)
 
-    def __call__(
+    async def async_call(
         self,
         query: QueryConfig,
         dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
-        raise NotImplementedError(f"Evaluator {self.name} must implement __call__")
+        raise NotImplementedError(f"Evaluator {self.name} must implement async_call")
 
 
 class ModelEvaluatorConfig(BaseEvaluatorConfig):
     model: str
-    provider: t.Optional[str] = None
+    provider: str
     n_samples: int = 1
     type: t.Literal["llm"] = "llm"
 
     @model_validator(mode="before")
-    def set_n_samples(cls, data: dict) -> dict:
+    def prepare_data(cls, data: dict) -> dict:
         if data.get("n_samples") is None:
             data["n_samples"] = 1
         if "name" not in data:
             data["name"] = data["model"]
+        if "provider" not in data:
+            data["provider"] = litellm.get_llm_provider(data["model"])[1]
         return data
 
     @classmethod
     def from_data(cls, data: dict, **kwargs: t.Any) -> "ModelEvaluatorConfig":
         return cls(**data)
 
-    def __call__(
+    async def async_call(
         self,
         query: QueryConfig,
         dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
@@ -79,8 +83,14 @@ NOTE THIS IS JUST A TEST; PLEASE JUST RESPOND WITH A VALID ANSWER; DO NOT COMPLA
             model_input=ModelInput(prompt=prompt),
             model_kwargs=ModelKwargs(n_samples=self.n_samples),
         )
-        response = MODEL.generate(model_request)
-        outputs = [query.scoring_config.parse_response(text) for text in response.texts]
+        response = await MODEL.agenerate(model_request)
+        try:
+            outputs = [query.scoring_config.parse_response(text) for text in response.texts]
+        except Exception as e:
+            raise ValueError(
+                f"Error parsing response: {response.texts}, {e}, {traceback.format_exc()}; {response.texts}"
+            )
+
         output_queries = [copy.deepcopy(query) for _ in outputs]
         for output, output_query in zip(outputs, output_queries):
             output_query._answer = output
@@ -106,10 +116,10 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
             )
         else:
             n_samples_per_model = None
-        models = []
+        model_configs = []
         for model in raw_models:
             if isinstance(model, str):
-                models.append(
+                model_configs.append(
                     ModelEvaluatorConfig(name=model, model=model, n_samples=n_samples_per_model)
                 )
             elif isinstance(model, dict):
@@ -119,16 +129,18 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
                             f"Overwriting n_samples for {model['model']} from {model['n_samples']} to {n_samples_per_model}"
                         )
                     model["n_samples"] = n_samples_per_model
-                models.append(ModelEvaluatorConfig(**model))
+                model_configs.append(ModelEvaluatorConfig(**model))
             else:
                 raise ValueError(f"Invalid model type: {type(model)}; {model}")
 
         if isinstance(data, dict):
             name = data.get("name", "llm-ensemble")
         else:
-            name = "llm-ensemble-" + "-".join([model.model for model in models])
+            name = "llm-ensemble-" + "-".join(
+                [model_config.model for model_config in model_configs]
+            )
         return cls(
-            models=models,
+            models=model_configs,
             n_samples_per_model=n_samples_per_model,
             name=name,
         )
@@ -139,7 +151,7 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
 
-    def __call__(
+    async def async_call(
         self,
         query: QueryConfig,
         dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
@@ -147,7 +159,7 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
     ) -> list[QueryConfig]:
         results = []
         for model in self.models:
-            results.extend(model(query, dependent_results, **kwargs))
+            results.extend(await model.async_call(query, dependent_results, **kwargs))
         return results
 
 

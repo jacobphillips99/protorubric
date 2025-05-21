@@ -73,14 +73,16 @@ class DiscreteScoringConfig(ScoringConfig):
     def to_prompt(self) -> str:
         return f"""
 Score the response based on the following options: {self.options} and provide a reasoning for your score.
-Respond with a JSON object with the following keys:
+Respond with a valid JSON object with the following keys:
 - score: the score you chose from the options
 - reasoning: the reasoning for your score
 Use the following format:
+
 {{
     "score": <score>,
     "reasoning": <reasoning>
 }}
+
 Do not include and other text; do not use "```json" or "```" anywhere in your response.
 """.strip()
 
@@ -130,14 +132,16 @@ class ContinuousScoringConfig(ScoringConfig):
         scoring_range = f"{'[' if self.inclusive_min else '('}{self.min}, {self.max}{']' if self.inclusive_max else ')'}"
         return f"""
 Score the response by providing an answer based on the following range: {scoring_range}. Respond with ONLY that number.
-Respond with a JSON object with the following keys:
+Respond with a valid JSON object with the following keys:
 - score: the score you chose from the range
 - reasoning: the reasoning for your score
 Use the following format:
+
 {{
     "score": <score>,
     "reasoning": <reasoning>
 }}
+
 Do not include and other text; do not use "```json" or "```" anywhere in your response.
 """.strip()
 
