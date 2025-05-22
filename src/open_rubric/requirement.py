@@ -12,7 +12,7 @@ from open_rubric.aggregators import (
 from open_rubric.base import BaseConfig
 from open_rubric.evaluators import BaseEvaluatorConfig, EvaluatorConfigs
 from open_rubric.query import QueryConfig
-from open_rubric.scoring import ScoringConfigs
+from open_rubric.scoring import ScoringConfig, ScoringConfigs
 
 
 class RequirementConfig(BaseConfig):
@@ -27,12 +27,14 @@ class RequirementConfig(BaseConfig):
     def from_data(cls, data: dict, **kwargs: t.Any) -> "RequirementConfig":
         # replace string scoring_config in Query with ScoringConfig object
         assert all(
-            k in kwargs for k in ["scoring_configs", "evaluator_configs", "aggregator_configs"]
-        ), f"Missing required kwargs [scoring_configs, evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
+            k in kwargs for k in ["evaluator_configs", "aggregator_configs"]
+        ), f"Missing required kwargs [evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
 
         scoring_configs: ScoringConfigs = kwargs["scoring_configs"]
         query = data["query"]
-        query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
+        if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
+            query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
+
         data["query"] = QueryConfig.from_data(query, **kwargs)
         if "query" in data and isinstance(data["query"], str):
             data["query"] = QueryConfig.from_yaml(data["query"], **kwargs)
@@ -59,6 +61,9 @@ class RequirementConfig(BaseConfig):
             f"{self.name}: {self._result.score} over {self._result.n_votes} votes aggregated by {self.aggregator.name}"
         )
         return aggregated_query
+
+    def set_inputs(self, inputs: t.Any) -> None:
+        self.query.inputs = inputs
 
 
 class Requirements(BaseConfig):
@@ -99,6 +104,9 @@ class Requirements(BaseConfig):
 
     def get_dependencies_by_name(self, name: str) -> t.Optional[list[str]]:
         return self.dependencies.get(name, None)
+
+    def get_all_requirements(self) -> list[RequirementConfig]:
+        return list(self.requirements.values())
 
     @model_validator(mode="before")
     def check_dependencies(cls, data: dict) -> dict:

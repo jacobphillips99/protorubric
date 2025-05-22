@@ -9,7 +9,7 @@ from open_rubric.scoring import ScoringConfig
 
 class QueryConfig(BaseConfig):
     instruction: str
-    inputs: t.Optional[list[str] | str] = None
+    inputs: t.Any  # TODO: fix any
     example: t.Optional[str] = None
     scoring_config: ScoringConfig
     _answer: t.Optional[AnswerConfig] = None

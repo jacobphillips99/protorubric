@@ -1,5 +1,6 @@
 """
-Decide on output of aggregation?
+Methods for aggregating the results of several evaluated queries.
+Returns an AggregatedQueryConfig object that contains the queries, the score, and may contain a confidence score.
 """
 
 import typing as t
@@ -25,6 +26,12 @@ class AggregatedQueryConfig(BaseConfig):
     @property
     def n_votes(self) -> int:
         return len(self.queries)
+
+    def get_scores(self) -> list[t.Any]:
+        return [query.score for query in self.queries]
+
+    def get_reasonings(self) -> list[t.Any]:
+        return [query.reasoning for query in self.queries]
 
 
 class BaseAggregatingConfig(BaseConfig):

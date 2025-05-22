@@ -5,16 +5,14 @@ import time
 
 import pandas as pd
 
-from open_rubric.aggregators import AggregatorConfigs, NullAggregatingConfig
-from open_rubric.evaluators import EvaluatorConfigs, ModelEvaluatorConfig
+from open_rubric.aggregators import NullAggregatingConfig
+from open_rubric.evaluators import ModelEvaluatorConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelRequest
 from open_rubric.query import QueryConfig
 from open_rubric.requirement import RequirementConfig, Requirements
 from open_rubric.rubric import Rubric
-from open_rubric.scoring import ScoringConfigs, name_to_scoring_configs
-
-# from open_rubric.rubric import Rubric
+from open_rubric.scoring import name_to_scoring_config
 
 rubric_path = "example_rubrics/test_rubric.yaml"
 healthbench_sample_path = "example_rubrics/healthbench.jsonl"
@@ -23,8 +21,8 @@ with open(healthbench_sample_path, "r") as f:
     hb_samples = [json.loads(line) for line in f]
 
 hb_df = pd.DataFrame(hb_samples)
-print(f"Rubric lengths: {hb_df.rubrics.apply(lambda x: len(ast.literal_eval(x))).describe()}")
-points = hb_df.rubrics.apply(lambda x: [y["points"] for y in ast.literal_eval(x)]).explode()
+print(f"Rubric lengths: {hb_df.rubrics.apply(lambda x: len(x)).describe()}")
+points = hb_df.rubrics.apply(lambda x: [y["points"] for y in x]).explode()
 print(f"Points distribution: {points.describe()}")
 hb_df = hb_df.head(2)
 
@@ -70,7 +68,7 @@ def construct_conversation_string(convo: list[dict] | str) -> str:
             try:
                 processed_convo = ast.literal_eval(convo)
             except Exception as e:
-                raise ValueError(f"Could not parse conversation: {convo}")
+                raise ValueError(f"Could not parse conversation:{e} {convo}")
     if not isinstance(processed_convo, list):
         raise ValueError(f"Conversation is not a list: {processed_convo}")
 
@@ -117,24 +115,26 @@ def get_rubric_items(row: pd.Series) -> list[dict]:
     return rubric_items
 
 
-def hb_rubric_to_requirement(rubric_item: dict, name: str) -> dict:
-    scoring_config = name_to_scoring_configs["binary"]
+def hb_rubric_to_requirement(rubric_item: dict, name: str) -> RequirementConfig:
+    scoring_config = name_to_scoring_config["binary"]()
     evaluator_config = ModelEvaluatorConfig(model=GRADER_MODEL, provider="openai")
     aggregator_config = NullAggregatingConfig()
-
     query_config = QueryConfig(
         instruction=rubric_item["criterion"],
-        inputs=None,  # TODO,
-        example=None,  # TODO,
+        inputs=None,  # added later in .solve()
+        example=None,
         scoring_config=scoring_config,
     )
-    requirement_config = RequirementConfig.from_data(
-        name=str, query=query_config, evaluator=evaluator_config, aggregator=aggregator_config
+    requirement_config = RequirementConfig(
+        name=name,
+        query=query_config,
+        evaluator=evaluator_config,
+        aggregator=aggregator_config,
     )
     return requirement_config
 
 
-async def run_row(row: pd.Series, ours: bool = False) -> list[dict]:
+async def run_row(row: pd.Series, ours: bool) -> list[dict]:
     rubric_dicts = get_rubric_items(row)
     print(f"running {len(rubric_dicts)} rubric items")
     if not ours:
@@ -145,34 +145,20 @@ async def run_row(row: pd.Series, ours: bool = False) -> list[dict]:
             ]
         )
     else:
-
-        requirement_configs = [
-            hb_rubric_to_requirement(item, str(i)) for i, item in enumerate(rubric_dicts)
-        ]
-        available_scoring_configs = [req.query.scoring_config for req in requirement_configs]
-        scoring_configs = ScoringConfigs(
-            scoring_configs={config.name: config for config in available_scoring_configs}
-        )
-
-        available_evaluator_configs = [req.evaluator for req in requirement_configs]
-        evaluator_configs = EvaluatorConfigs(
-            evaluators={config.name: config for config in available_evaluator_configs}
-        )
-
-        available_aggregator_configs = [req.aggregator for req in requirement_configs]
-        aggregator_configs = AggregatorConfigs(
-            aggregators={config.name: config for config in available_aggregator_configs}
-        )
-
+        requirement_configs = {
+            req.name: req
+            for req in [
+                hb_rubric_to_requirement(item, str(i)) for i, item in enumerate(rubric_dicts)
+            ]
+        }
         requirements = Requirements(requirements=requirement_configs)
-        rubric = Rubric(
-            requirements=requirements,
-            scoring_configs=scoring_configs,
-            evaluators=evaluator_configs,
-            aggregators=aggregator_configs,
-        )
-        results = rubric.solve(inputs=construct_conversation_string(row.convo_with_response))
+        rubric = Rubric(requirements=requirements)
+        results = await rubric.asolve(inputs=construct_conversation_string(row.convo_with_response))
         rubric_responses = [results[req.name] for req in requirement_configs]
+        rubric_scores = {k: v.score for k, v in results.items()}
+        print(rubric_scores)
+        breakpoint()
+
     return rubric_responses
 
 
@@ -182,6 +168,9 @@ if __name__ == "__main__":
     # asyncio.run(run_completions(hb_df, update_in_place=True))
     # hb_df.to_csv("example_rubrics/hb_df.csv", index=False)
     hb_df = pd.read_csv("example_rubrics/hb_df.csv")
+    hb_df = hb_df.head(1)
+
+    rubric_responses = asyncio.run(run_row(hb_df.iloc[0], ours=True))
     # output = asyncio.run(hb_run_rubric_items(hb_df.iloc[0]))
 
     breakpoint()

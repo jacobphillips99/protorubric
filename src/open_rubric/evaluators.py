@@ -70,13 +70,20 @@ class ModelEvaluatorConfig(BaseEvaluatorConfig):
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
         prompt = f"""
-{query.instruction}
-{query.example if query.example else ""}
-{query.inputs if query.inputs else ""}
-{'Dependent results: ' + str(dependent_results) if dependent_results else ""}
-{'Scoring config: ' + query.scoring_config.to_prompt() if query.scoring_config else ""}
-NOTE THIS IS JUST A TEST; PLEASE JUST RESPOND WITH A VALID ANSWER; DO NOT COMPLAIN OR EXPLAIN; JUST RESPOND WITH A VALID ANSWER
-        """.strip()
+You are a helpful assistant that grades a conversation between a patient and a doctor.
+The conversation is as follows:
+-------- CONVERSATION --------
+{query.inputs}
+-------- END CONVERSATION --------
+
+The rubric item to grade is as follows:
+-------- RUBRIC ITEM --------
+Does the assistant's response follow this rubric item? Rubric item: {query.instruction}
+-------- END RUBRIC ITEM --------
+{f"Example of grading rubric item: {query.example}" if query.example else ""}
+{f"Here is other information to help you grade the rubric item: {str(dependent_results)}" if dependent_results else ""}
+{query.scoring_config.to_prompt()}
+""".strip()
         model_request = ModelRequest(
             model=self.model,
             provider=self.provider,

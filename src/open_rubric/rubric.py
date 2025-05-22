@@ -4,7 +4,7 @@ import typing as t
 
 import yaml
 
-from open_rubric.aggregators import AggregatedQueryConfig, AggregatorConfigs, aggregator_configs
+from open_rubric.aggregators import AggregatedQueryConfig, aggregator_configs
 from open_rubric.base import BaseConfig
 from open_rubric.dag import topological_levels
 from open_rubric.evaluators import EvaluatorConfigs
@@ -14,9 +14,6 @@ from open_rubric.scoring import ScoringConfigs
 
 class Rubric(BaseConfig):
     requirements: Requirements
-    scoring_configs: ScoringConfigs
-    evaluators: EvaluatorConfigs
-    aggregator_configs: AggregatorConfigs
 
     @classmethod
     def from_data(cls, data: t.Any, **kwargs: t.Any) -> "Rubric":
@@ -30,12 +27,7 @@ class Rubric(BaseConfig):
             evaluator_configs=evaluator_configs,
             aggregator_configs=aggregator_configs,
         )
-        return cls(
-            requirements=requirements,
-            scoring_configs=scoring_configs,
-            evaluators=evaluator_configs,
-            aggregator_configs=aggregator_configs,
-        )
+        return cls(requirements=requirements)
 
     @classmethod
     def from_yaml(cls, path: str, **kwargs: t.Any) -> "Rubric":
@@ -43,15 +35,24 @@ class Rubric(BaseConfig):
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
 
-    def solve(
-        self, inputs: t.Optional[dict[str, t.Any]] = None
+    async def asolve(
+        self,
+        inputs: t.Any,  # TODO: fix any
     ) -> dict[str, AggregatedQueryConfig]:
         # solve the DAG of requirements; prepend any requirements without dependencies
+
+        # check if inputs need to be added to requirements
+        all_requirements = self.requirements.get_all_requirements()
+        for req in all_requirements:
+            if not req.query.inputs:
+                req.query.inputs = inputs
+
         results: dict[str, AggregatedQueryConfig] = dict()
         level_sorted_reqs = [
             [self.requirements.get_requirement_by_name(req) for req in level]
             for level in topological_levels(self.requirements.dependencies)
         ]
+
         print(f"\n\nFound {len(level_sorted_reqs)} levels")
         for i, level in enumerate(level_sorted_reqs):
             print("--------------------------------")
@@ -59,7 +60,7 @@ class Rubric(BaseConfig):
                 f"Solving level {i + 1} of {len(level_sorted_reqs)} over requirements: {[req.name for req in level]}"
             )
             tic = time.time()
-            level_results = asyncio.run(self.solve_level(level, results))
+            level_results = await self.asolve_level(level, results)
             toc = time.time()
             print(
                 f"Solved level {i + 1} of {len(level_sorted_reqs)} in {round(toc - tic, 2)} seconds"
@@ -67,8 +68,10 @@ class Rubric(BaseConfig):
             results.update(level_results)
         return results
 
-    async def solve_level(
-        self, level: list[RequirementConfig], results: dict[str, AggregatedQueryConfig]
+    async def asolve_level(
+        self,
+        level: list[RequirementConfig],
+        results: dict[str, AggregatedQueryConfig],
     ) -> dict[str, AggregatedQueryConfig]:
         payloads: list[tuple[RequirementConfig, dict[str, t.Any]]] = []
         for req in level:
