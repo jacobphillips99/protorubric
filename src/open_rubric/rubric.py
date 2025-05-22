@@ -43,7 +43,9 @@ class Rubric(BaseConfig):
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
 
-    def solve(self) -> dict[str, AggregatedQueryConfig]:
+    def solve(
+        self, inputs: t.Optional[dict[str, t.Any]] = None
+    ) -> dict[str, AggregatedQueryConfig]:
         # solve the DAG of requirements; prepend any requirements without dependencies
         results: dict[str, AggregatedQueryConfig] = dict()
         level_sorted_reqs = [

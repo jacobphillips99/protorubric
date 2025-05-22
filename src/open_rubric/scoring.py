@@ -30,15 +30,15 @@ class ScoringConfig(BaseConfig):
     def from_data(cls, data: dict | str, **kwargs: t.Any) -> "ScoringConfig":
         # named scoring configs, like unit_scalar, binary, etc can be accessed by name
         if isinstance(data, str):
-            if data in subtype_to_scoring_configs:
-                return subtype_to_scoring_configs[data](**kwargs)
+            if data in name_to_scoring_configs:
+                return name_to_scoring_configs[data](**kwargs)
             else:
                 raise ValueError(f"Cannot find scoring config with name {data}")
         elif isinstance(data, dict):
             subtype = data.pop("subtype")
             name = data.pop("name", subtype)
-            if subtype in subtype_to_scoring_configs:
-                return subtype_to_scoring_configs[subtype](**{**data, "name": name})
+            if subtype in name_to_scoring_configs:
+                return name_to_scoring_configs[subtype](**{**data, "name": name})
             else:
                 raise ValueError(f"Cannot find scoring config with subtype {subtype}")
         else:
@@ -178,11 +178,11 @@ subtype_to_continuous_scoring_configs = {
     "unit_scalar": UnitScalarScoringConfig,
 }
 continuous_scoring_configs = list(subtype_to_continuous_scoring_configs.values())
-subtype_to_scoring_configs = {
+name_to_scoring_configs = {
     **subtype_to_discrete_scoring_configs,
     **subtype_to_continuous_scoring_configs,
 }
-all_scoring_configs = list(subtype_to_scoring_configs.values())
+all_scoring_configs = list(name_to_scoring_configs.values())
 
 
 class ScoringConfigs(BaseConfig):

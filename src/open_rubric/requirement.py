@@ -1,6 +1,7 @@
 import typing as t
 
 import yaml
+from pydantic import model_validator
 
 from open_rubric.aggregators import (
     AggregatedQueryConfig,
@@ -98,3 +99,12 @@ class Requirements(BaseConfig):
 
     def get_dependencies_by_name(self, name: str) -> t.Optional[list[str]]:
         return self.dependencies.get(name, None)
+
+    @model_validator(mode="before")
+    def check_dependencies(cls, data: dict) -> dict:
+        if "dependencies" not in data:
+            deps = dict()
+            for req in data["requirements"].values():
+                deps[req.name] = req.dependency_names
+            data["dependencies"] = deps
+        return data
