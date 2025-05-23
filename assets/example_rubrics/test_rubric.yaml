@@ -1,7 +1,7 @@
 scoring_configs:
   - binary
   - unit_scalar
-  - example_rubrics/my_scoring_config.yaml
+  - assets/example_rubrics/my_scoring_config.yaml
   - name: overall-quality-scoring-config
     subtype: continuous
     min: 0
@@ -15,7 +15,7 @@ evaluator_configs:
     type: llm
     model: gpt-4.1-mini
     n_samples: 3
-  - example_rubrics/my_llm_committee_evaluator.yaml
+  - assets/example_rubrics/my_llm_committee_evaluator.yaml
 
 requirements:
   - name: grammar

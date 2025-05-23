@@ -5,7 +5,12 @@ import time
 
 import pandas as pd
 
-from open_rubric.aggregating import ModeAggregatingConfig, NullAggregatingConfig, WeightedAverageAggregatingConfig, WeightedSumAggregatingConfig
+from open_rubric.aggregating import (
+    ModeAggregatingConfig,
+    NullAggregatingConfig,
+    WeightedAverageAggregatingConfig,
+    WeightedSumAggregatingConfig,
+)
 from open_rubric.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelRequest
@@ -14,8 +19,9 @@ from open_rubric.requirement import RequirementConfig, Requirements
 from open_rubric.rubric import Rubric
 from open_rubric.scoring import name_to_scoring_config
 
-rubric_path = "example_rubrics/test_rubric.yaml"
-healthbench_sample_path = "example_rubrics/healthbench.jsonl"
+rubric_path = "assets/example_rubrics/test_rubric.yaml"
+healthbench_sample_path = "assets/healthbench.jsonl"
+healthbench_with_completions_path = "assets/hb_df.csv"
 
 with open(healthbench_sample_path, "r") as f:
     hb_samples = [json.loads(line) for line in f]
@@ -105,7 +111,7 @@ async def grade_one_rubric_item(convo_str: str, rubric_item: dict) -> dict:
 
 
 def get_rubric_items(row: pd.Series) -> list[dict]:
-    rubric_items = ast.literal_eval(row.rubrics)
+    rubric_items: list[dict] = ast.literal_eval(row.rubrics)
     return rubric_items
 
 
@@ -142,6 +148,8 @@ async def run_row(row: pd.Series, ours: bool) -> list[dict]:
         requirement_configs = dict()
         weights = []
         for i, rubric_dict in enumerate(rubric_dicts):
+            if i > 3:
+                break
             req = hb_rubric_to_requirement(rubric_dict, str(i))
             requirement_configs[req.name] = req
             weights.append(rubric_dict["points"])
@@ -179,7 +187,7 @@ async def run_row(row: pd.Series, ours: bool) -> list[dict]:
         requirement_configs[mode_vote_collector.name] = mode_vote_collector
         requirement_configs[weighted_average_collector.name] = weighted_average_collector
         requirement_configs[weighted_sum_collector.name] = weighted_sum_collector
-        
+
         requirements = Requirements(requirements=requirement_configs)
         rubric = Rubric(requirements=requirements)
 
@@ -187,9 +195,10 @@ async def run_row(row: pd.Series, ours: bool) -> list[dict]:
         rubric_responses = [results[req_name] for req_name in requirement_configs.keys()]
         rubric_scores = {k: v.score for k, v in results.items()}
         print(rubric_scores)
-        print(f"Final Mode: {rubric_scores[mode_collector_name].score}")
-        print(f"Final Weighted Average: {rubric_scores[weighted_average_collector_name].score}")
-        print(f"Final Weighted Sum: {rubric_scores[weighted_sum_collector_name].score}")
+        breakpoint()
+        print(f"Final Mode: {results[mode_collector_name].score}")
+        print(f"Final Weighted Average: {results[weighted_average_collector_name].score}")
+        print(f"Final Weighted Sum: {results[weighted_sum_collector_name].score}")
         breakpoint()
 
     return rubric_responses
@@ -199,8 +208,8 @@ if __name__ == "__main__":
     # rubric = Rubric.from_yaml(rubric_path)
     # results = rubric.solve()
     # asyncio.run(run_completions(hb_df, update_in_place=True))
-    # hb_df.to_csv("example_rubrics/hb_df.csv", index=False)
-    hb_df = pd.read_csv("example_rubrics/hb_df.csv")
+    # hb_df.to_csv(healthbench_with_completions_path, index=False)
+    hb_df = pd.read_csv(healthbench_with_completions_path)
     hb_df = hb_df.head(1)
 
     rubric_responses = asyncio.run(run_row(hb_df.iloc[0], ours=True))

@@ -4,6 +4,7 @@ scipy
 pyyaml
 litellm
 pandas
+aiosqlite
 
 # rate limiter setup
 git+https://github.com/jacobphillips99/llm-rate-limiter.git

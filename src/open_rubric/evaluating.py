@@ -41,13 +41,16 @@ class BaseEvaluatorConfig(BaseConfig):
         query: QueryConfig,
         dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
         **kwargs: t.Any,
-    ) -> list[QueryConfig]:
+    ) -> list[QueryConfig | AggregatedQueryConfig]:
         raise NotImplementedError(f"Evaluator {self.name} must implement async_call")
+
 
 class PassThroughEvaluatorConfig(BaseEvaluatorConfig):
     """
-    Special class to skip evaluation and just return the dependent results as the answer
+    Special class to skip evaluation of the input query and just return the dependent results.
+    Useful for collecting scores from other evaluators.
     """
+
     name: str = "pass-through"
     type: t.Literal["pass-through"] = "pass-through"
 
@@ -56,11 +59,11 @@ class PassThroughEvaluatorConfig(BaseEvaluatorConfig):
         query: QueryConfig,
         dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
         **kwargs: t.Any,
-    ) -> list[QueryConfig]:
-        outputs = []
-        for _, agg_query in dependent_results.items():
-            outputs.extend(agg_query.queries)
-        return outputs
+    ) -> list[QueryConfig | AggregatedQueryConfig]:
+        assert (
+            dependent_results is not None
+        ), f"PassThroughEvaluatorConfig requires dependent_results, but got {dependent_results}"
+        return list(dependent_results.values())
 
 
 class ModelEvaluatorConfig(BaseEvaluatorConfig):
@@ -199,7 +202,9 @@ class EvaluatorConfigs(BaseConfig):
         for evaluator in data:
             if isinstance(evaluator, str) and evaluator.endswith(".yaml"):
                 # recursive loading of evaluator_configs
-                evaluator_configs.extend(EvaluatorConfigs.from_yaml(evaluator).evaluator_configs.values())
+                evaluator_configs.extend(
+                    EvaluatorConfigs.from_yaml(evaluator).evaluator_configs.values()
+                )
             else:
                 evaluator_configs.append(BaseEvaluatorConfig.from_data(evaluator))
         return cls(evaluator_configs={evaluator.name: evaluator for evaluator in evaluator_configs})

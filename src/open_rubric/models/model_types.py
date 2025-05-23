@@ -1,3 +1,5 @@
+import hashlib
+import json
 import typing as t
 
 import litellm
@@ -51,6 +53,16 @@ class ModelRequest(BaseModel):
         if not data.get("model_input") and not data.get("prepared_messages"):
             raise ValueError("model_input or prepared_messages must be provided!")
         return data
+
+    def to_hash(self, exclude: t.Optional[list[str]] = None) -> str:
+        """
+        Creates a hash of the model request for a given ModelRequest object.
+        """
+        if exclude is None:
+            exclude = ["timeout"]
+        dump = self.model_dump(exclude=exclude)
+        blob = json.dumps(dump, sort_keys=True).encode()
+        return hashlib.sha256(blob).hexdigest()
 
 
 class ModelResponse(BaseModel):

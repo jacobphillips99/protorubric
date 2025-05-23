@@ -8,10 +8,10 @@ from open_rubric.scoring import ScoringConfig
 
 
 class QueryConfig(BaseConfig):
-    instruction: t.Optional[str] = None
+    instruction: str
     inputs: t.Optional[t.Any] = None
     example: t.Optional[str] = None
-    scoring_config: t.Optional[ScoringConfig] = None
+    scoring_config: ScoringConfig
     _answer: t.Optional[AnswerConfig] = None
 
     @classmethod
@@ -36,10 +36,15 @@ class QueryConfig(BaseConfig):
     def score(self) -> t.Any:
         return self._answer.score if self._answer else None
 
+    @property
+    def reasoning(self) -> str | None:
+        return self._answer.reasoning if self._answer else None
+
+
 NULL_QUERY_CONFIG = QueryConfig(
-    instruction=None,
+    instruction="None",
     inputs=None,
     example=None,
-    scoring_config=None,
+    scoring_config=ScoringConfig(),
     _answer=None,
 )

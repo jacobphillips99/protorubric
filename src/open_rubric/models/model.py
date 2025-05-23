@@ -8,6 +8,7 @@ import typing as t
 import litellm
 from llm_rate_limiter.rate_limit import rate_limiter
 
+from open_rubric.models.cache import ASYNC_REQUEST_CACHE
 from open_rubric.models.model_types import (
     ModelInput,
     ModelKwargs,
@@ -37,7 +38,7 @@ class Model:
             model_kwargs=ModelKwargs(max_tokens=5),
         )
         try:
-            output = await self.agenerate(model_request)
+            output = await self.agenerate(model_request, invalidate_cache=True)
             return output
         except Exception as e:
             logger.error(
@@ -112,7 +113,13 @@ class Model:
         # assume half usage of max tokens
         return (text_tokens + image_tokens) + int(max_tokens / 2)
 
-    async def agenerate(self, model_request: ModelRequest) -> ModelResponse:
+    async def agenerate(
+        self, model_request: ModelRequest, invalidate_cache: bool = False
+    ) -> ModelResponse:
+        cached_response = await ASYNC_REQUEST_CACHE.aget(model_request)
+        if cached_response and not invalidate_cache:
+            return cached_response
+
         provider = model_request.provider
         messages = self._prepare_messages(model_request)
         estimated_token_consumption = self._get_estimated_tokens(model_request)
@@ -131,6 +138,7 @@ class Model:
             # update the rate limiter with the actual token consumption
             token_usage = model_response.usage.get("total_tokens", estimated_token_consumption)
             rate_limiter.record_usage(provider, model_request.model, token_usage)
+            await ASYNC_REQUEST_CACHE.aput(model_request, model_response)
             return model_response
         except Exception as e:
             logger.error(
