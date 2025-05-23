@@ -180,7 +180,6 @@ class ModeAggregatingConfig(BaseAggregatingConfig):
         score = score_type(score)
         count = counts[max_idx]
         conf = count / len(scores)
-        breakpoint()
         return AggregatedQueryConfig(
             queries=queries,
             score=score,

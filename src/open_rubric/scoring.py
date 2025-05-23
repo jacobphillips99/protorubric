@@ -24,7 +24,7 @@ from open_rubric.base import BaseConfig
 class ScoringConfig(BaseConfig):
     name: str = ""
     subtype: str = ""
-    type: t.Literal["discrete", "continuous"]
+    type: t.Literal["discrete", "continuous", "base"] = "base"
 
     @classmethod
     def from_data(cls, data: dict | str, **kwargs: t.Any) -> "ScoringConfig":
@@ -102,6 +102,8 @@ class BinaryScoringConfig(DiscreteScoringConfig):
 
     def parse_response(self, response: str) -> BoolAnswerConfig:
         data = json.loads(response)
+        if isinstance(data["score"], bool):
+            data["score"] = "true" if data["score"] else "false"
         assert data["score"] in self.options, f"Response {response} not in options {self.options}"
         reasoning = data.get("reasoning", None)
         return BoolAnswerConfig(score=(data["score"] == "true"), reasoning=reasoning)

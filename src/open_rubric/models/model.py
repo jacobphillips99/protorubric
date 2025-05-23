@@ -116,9 +116,11 @@ class Model:
     async def agenerate(
         self, model_request: ModelRequest, invalidate_cache: bool = False
     ) -> ModelResponse:
-        cached_response = await ASYNC_REQUEST_CACHE.aget(model_request)
-        if cached_response and not invalidate_cache:
-            return cached_response
+        env_invalidate_cache = os.environ.get("OPEN_RUBRIC_INVALIDATE_CACHE") == "True"
+        if not invalidate_cache and not env_invalidate_cache:
+            cached_response = await ASYNC_REQUEST_CACHE.aget(model_request)
+            if cached_response:
+                return cached_response
 
         provider = model_request.provider
         messages = self._prepare_messages(model_request)

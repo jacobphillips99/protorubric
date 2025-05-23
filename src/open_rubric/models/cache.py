@@ -1,3 +1,10 @@
+"""
+Cache for model requests and responses. Uses a sqlite database to store the requests and responses.
+Optionally invalidate the cache by setting the invalidate_cache flag to True.
+
+TODO: make a LRU or size limit
+"""
+
 import time
 import typing as t
 from contextlib import asynccontextmanager
@@ -30,11 +37,14 @@ class AsyncRequestCache:
     async def aget(self, req: ModelRequest) -> ModelResponse | None:
         k = req.to_hash()
         async with _conn() as db:
-            row = await db.execute_fetchone("select response, ts from cache where key=?;", (k,))
+            cursor = await db.execute("select response, ts from cache where key=?;", (k,))
+            row = await cursor.fetchone()
         if not row:
             return None
         blob = row[0]
-        return ModelResponse.model_validate_json(blob)
+        print("Cache hit!")
+        model_response: ModelResponse = ModelResponse.model_validate_json(blob)
+        return model_response
 
     async def aput(self, req: ModelRequest, resp: ModelResponse) -> None:
         async with _conn() as db:
@@ -43,6 +53,13 @@ class AsyncRequestCache:
                 (req.to_hash(), resp.model_dump_json(), time.time()),
             )
             await db.commit()
+        print("Cache miss!")
+
+    async def inspect(self) -> dict[str, t.Any]:
+        async with _conn() as db:
+            cursor = await db.execute("select count(*) from cache;")
+            count = await cursor.fetchone()
+            return {"count": count[0]}
 
 
 ASYNC_REQUEST_CACHE = AsyncRequestCache()
