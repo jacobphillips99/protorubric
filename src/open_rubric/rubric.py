@@ -4,12 +4,12 @@ import typing as t
 
 import yaml
 
-from open_rubric.configs.aggregating import AggregatedQueryConfig, AggregatorConfigs 
+from open_rubric.configs.aggregating import AggregatedQueryConfig, AggregatorConfigs
 from open_rubric.configs.base import BaseConfig
-from open_rubric.utils.dag import topological_levels
 from open_rubric.configs.evaluating import EvaluatorConfigs
 from open_rubric.configs.requirement import RequirementConfig, Requirements
 from open_rubric.configs.scoring import ScoringConfigs
+from open_rubric.utils.dag import topological_levels
 
 
 class Rubric(BaseConfig):
@@ -21,7 +21,11 @@ class Rubric(BaseConfig):
         assert "requirements" in data, f"Rubric must contain requirements; got {data.keys()}"
         scoring_configs = ScoringConfigs.from_data_or_yaml(data["scoring_configs"])
         evaluator_configs = EvaluatorConfigs.from_data_or_yaml(data["evaluator_configs"])
-        aggregator_configs = AggregatorConfigs.from_data_or_yaml(data["aggregator_configs"]) if "aggregator_configs" in data else AggregatorConfigs.from_data([])
+        aggregator_configs = (
+            AggregatorConfigs.from_data_or_yaml(data["aggregator_configs"])
+            if "aggregator_configs" in data
+            else AggregatorConfigs.from_data([])
+        )
         requirements = Requirements.from_data(
             data["requirements"],
             scoring_configs=scoring_configs,
@@ -86,3 +90,6 @@ class Rubric(BaseConfig):
             *[req.async_evaluate(**payload) for req, payload in payloads]
         )
         return {req.name: aqr for req, aqr in zip(level, agg_query_results)}
+
+    def to_yaml(self, path: str) -> None:
+        raise NotImplementedError("Not implemented")

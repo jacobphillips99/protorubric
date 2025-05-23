@@ -173,7 +173,12 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Mac OS
+.DS_Store
+
 # ignore data samples
 assets/healthbench.jsonl
 assets/hb_df.csv
 assets/request_cache.db
+assets/viz_outputs/*
+!assets/viz_outputs/.gitkeep

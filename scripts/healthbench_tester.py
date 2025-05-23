@@ -12,12 +12,12 @@ from open_rubric.configs.aggregating import (
     WeightedSumAggregatingConfig,
 )
 from open_rubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
-from open_rubric.models.model import MODEL
-from open_rubric.models.model_types import ModelInput, ModelRequest
 from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
 from open_rubric.configs.requirement import RequirementConfig, Requirements
-from open_rubric.rubric import Rubric
 from open_rubric.configs.scoring import name_to_scoring_config
+from open_rubric.models.model import MODEL
+from open_rubric.models.model_types import ModelInput, ModelRequest
+from open_rubric.rubric import Rubric
 
 rubric_path = "assets/example_rubrics/test_rubric.yaml"
 healthbench_path = "assets/healthbench.jsonl"

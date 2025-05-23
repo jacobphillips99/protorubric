@@ -72,7 +72,9 @@ class Requirements(BaseConfig):
 
     @classmethod
     def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "Requirements":
-        assert all(k in kwargs for k in ["scoring_configs", "evaluator_configs", "aggregator_configs"]), f"Missing required kwargs [scoring_configs, evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
+        assert all(
+            k in kwargs for k in ["scoring_configs", "evaluator_configs", "aggregator_configs"]
+        ), f"Missing required kwargs [scoring_configs, evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
         reqs = []
         for req in data:
             reqs.append(RequirementConfig.from_data(req, **kwargs))
