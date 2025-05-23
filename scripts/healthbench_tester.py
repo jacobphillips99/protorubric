@@ -19,7 +19,6 @@ from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelRequest
 from open_rubric.rubric import Rubric
 
-rubric_path = "assets/example_rubrics/test_rubric.yaml"
 healthbench_path = "assets/healthbench.jsonl"
 healthbench_with_completions_path = "assets/hb_df.csv"
 
@@ -138,6 +137,53 @@ def get_rubric_items(row: pd.Series) -> list[dict]:
     return rubric_items
 
 
+def make_rubric_from_hb_dicts(rubric_dicts: list[dict]) -> Rubric:
+    requirement_configs = dict()
+    weights = []
+    for i, rubric_dict in enumerate(rubric_dicts):
+        req = hb_rubric_to_requirement(rubric_dict, name=f"rubric_item_{i}")
+        requirement_configs[req.name] = req
+        weights.append(rubric_dict["points"])
+    print(f"Weights: {weights}")
+
+    # add an another Requirement that collects all of the above scores
+    mode_collector_name = "mode_collector"
+    mode_vote_collector = RequirementConfig(
+        name=mode_collector_name,
+        query=NULL_QUERY_CONFIG,
+        evaluator=PassThroughEvaluatorConfig(),
+        aggregator=ModeAggregatingConfig(),
+        dependency_names=list(requirement_configs.keys()),
+    )
+
+    weighted_average_collector_name = "weighted_average_collector"
+    weighted_average_collector = RequirementConfig(
+        name=weighted_average_collector_name,
+        query=NULL_QUERY_CONFIG,
+        evaluator=PassThroughEvaluatorConfig(),
+        aggregator=WeightedAverageAggregatingConfig(weights=weights),
+        dependency_names=list(requirement_configs.keys()),
+    )
+
+    weighted_sum_collector_name = "weighted_sum_collector"
+    weighted_sum_collector = RequirementConfig(
+        name=weighted_sum_collector_name,
+        query=NULL_QUERY_CONFIG,
+        evaluator=PassThroughEvaluatorConfig(),
+        aggregator=WeightedSumAggregatingConfig(weights=weights),
+        dependency_names=list(requirement_configs.keys()),
+    )
+
+    # add collectors to the requirement configs AFTER definition to avoid linkage
+    requirement_configs[mode_vote_collector.name] = mode_vote_collector
+    requirement_configs[weighted_average_collector.name] = weighted_average_collector
+    requirement_configs[weighted_sum_collector.name] = weighted_sum_collector
+
+    requirements = Requirements(requirements=requirement_configs)
+    rubric = Rubric(requirements=requirements)
+    return rubric
+
+
 def hb_rubric_to_requirement(rubric_item: dict, name: str) -> RequirementConfig:
     scoring_config = name_to_scoring_config["binary"]()
     evaluator_config = ModelEvaluatorConfig(model=GRADER_MODEL, provider="openai")
@@ -170,64 +216,34 @@ async def run_row(row: pd.Series, ours: bool) -> list[tuple[dict, dict]]:
         rubric_responses = [(rubric, result) for rubric, result in zip(rubric_dicts, results)]
 
     else:
-        requirement_configs = dict()
-        weights = []
-        for i, rubric_dict in enumerate(rubric_dicts):
-            req = hb_rubric_to_requirement(rubric_dict, name=f"rubric_item_{i}")
-            requirement_configs[req.name] = req
-            weights.append(rubric_dict["points"])
-        print(f"Weights: {weights}")
-
-        # add an another Requirement that collects all of the above scores
-        mode_collector_name = "mode_collector"
-        mode_vote_collector = RequirementConfig(
-            name=mode_collector_name,
-            query=NULL_QUERY_CONFIG,
-            evaluator=PassThroughEvaluatorConfig(),
-            aggregator=ModeAggregatingConfig(),
-            dependency_names=list(requirement_configs.keys()),
-        )
-
-        weighted_average_collector_name = "weighted_average_collector"
-        weighted_average_collector = RequirementConfig(
-            name=weighted_average_collector_name,
-            query=NULL_QUERY_CONFIG,
-            evaluator=PassThroughEvaluatorConfig(),
-            aggregator=WeightedAverageAggregatingConfig(weights=weights),
-            dependency_names=list(requirement_configs.keys()),
-        )
-
-        weighted_sum_collector_name = "weighted_sum_collector"
-        weighted_sum_collector = RequirementConfig(
-            name=weighted_sum_collector_name,
-            query=NULL_QUERY_CONFIG,
-            evaluator=PassThroughEvaluatorConfig(),
-            aggregator=WeightedSumAggregatingConfig(weights=weights),
-            dependency_names=list(requirement_configs.keys()),
-        )
-
-        # add collectors to the requirement configs AFTER definition to avoid linkage
-        requirement_configs[mode_vote_collector.name] = mode_vote_collector
-        requirement_configs[weighted_average_collector.name] = weighted_average_collector
-        requirement_configs[weighted_sum_collector.name] = weighted_sum_collector
-
-        requirements = Requirements(requirements=requirement_configs)
-        rubric = Rubric(requirements=requirements)
-
+        rubric = make_rubric_from_hb_dicts(rubric_dicts)
         results = await rubric.asolve(inputs=construct_conversation_string(row.convo_with_response))
         rubric_responses = [
             (req.model_dump(), results[req_name].model_dump())
-            for req_name, req in requirement_configs.items()
+            for req_name, req in rubric.requirements.items()
         ]
 
     return rubric_responses
 
 
+# make example rubric from hb_df
+def make_hb_example() -> tuple[Rubric, str]:
+    hb_df = pd.read_csv(healthbench_with_completions_path)
+    hb_df = hb_df.head(1)
+    rubric_dicts = get_rubric_items(hb_df.iloc[0])
+    rubric = make_rubric_from_hb_dicts(rubric_dicts)
+    inputs = construct_conversation_string(hb_df.iloc[0].convo_with_response)
+    return rubric, inputs
+
+
 if __name__ == "__main__":
-    # rubric = Rubric.from_yaml(rubric_path)
-    # results = rubric.solve()
     # asyncio.run(run_completions(hb_df, update_in_place=True))
     # hb_df.to_csv(healthbench_with_completions_path, index=False)
+
+    rubric, inputs = make_hb_example()
+    results = rubric.solve(inputs=inputs)
+    breakpoint()
+
     hb_df = pd.read_csv(healthbench_with_completions_path)
     hb_df = hb_df.head(1)
     OUR_METHOD = True

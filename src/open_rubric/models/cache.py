@@ -3,6 +3,8 @@ Cache for model requests and responses. Uses a sqlite database to store the requ
 Optionally invalidate the cache by setting the invalidate_cache flag to True.
 
 TODO: make a LRU or size limit
+
+Set `OPEN_RUBRIC_INVALIDATE_CACHE` to True to invalidate the cache.
 """
 
 import time

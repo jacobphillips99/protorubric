@@ -73,6 +73,9 @@ class Rubric(BaseConfig):
         print("-" * 100)
         return results
 
+    def solve(self, inputs: t.Any) -> dict[str, AggregatedQueryConfig]:
+        return asyncio.run(self.asolve(inputs))
+
     async def asolve_level(
         self,
         level: list[RequirementConfig],

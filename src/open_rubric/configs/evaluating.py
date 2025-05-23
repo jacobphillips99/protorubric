@@ -7,6 +7,7 @@ import yaml
 from pydantic import model_validator
 
 from open_rubric.configs.aggregating import AggregatedQueryConfig
+from open_rubric.configs.answers import AnyAnswerConfig
 from open_rubric.configs.base import BaseConfig
 from open_rubric.configs.query import QueryConfig
 from open_rubric.models.model import MODEL
@@ -112,11 +113,13 @@ Does the assistant's response follow this rubric item? Rubric item: {query.instr
             provider=self.provider,
             model_input=ModelInput(prompt=prompt),
             model_kwargs=ModelKwargs(n_samples=self.n_samples),
+            response_format=AnyAnswerConfig
         )
         response = await MODEL.agenerate(model_request)
         try:
             outputs = [query.scoring_config.parse_response(text) for text in response.texts]
         except Exception as e:
+            breakpoint()
             raise ValueError(
                 f"Error parsing response: {response.texts}, {e}, {traceback.format_exc()}; {response.texts}"
             )

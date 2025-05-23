@@ -4,7 +4,7 @@ import typing as t
 
 import litellm
 from litellm.types.utils import ModelResponse as LiteLLMResponse
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 
 class ImageInput(BaseModel):
@@ -38,6 +38,14 @@ class ModelRequest(BaseModel):
     extra_kwargs: t.Optional[dict[str, t.Any]] = None
     system_prompt: t.Optional[str] = None
     prepared_messages: t.Optional[list[ModelInput]] = None
+    response_format: t.Optional[type[BaseModel]] = None
+
+    @field_serializer('response_format')
+    def serialize_response_format(self, value: t.Optional[type[BaseModel]]) -> t.Optional[dict[str, t.Any]]:
+        """Serialize response_format class to its JSON schema for hash consistency."""
+        if value is None:
+            return None
+        return value.model_json_schema()
 
     @model_validator(mode="before")
     def set_provider(cls, data: dict) -> dict:
@@ -112,6 +120,8 @@ def construct_payload(
         for k, v in model_request.extra_kwargs.items():
             if v is not None:
                 payload[k] = v
+    if model_request.response_format:
+        payload["response_format"] = model_request.response_format
 
     # some models have specific kwargs! e.g. thinking models have max_completion_tokens and reject temperature
     if model_request.model in ["o4", "o3", "o4-mini", "o3-mini"]:
