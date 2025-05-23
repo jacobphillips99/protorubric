@@ -6,11 +6,11 @@ import litellm
 import yaml
 from pydantic import model_validator
 
-from open_rubric.aggregating import AggregatedQueryConfig
-from open_rubric.base import BaseConfig
+from open_rubric.configs.aggregating import AggregatedQueryConfig
+from open_rubric.configs.base import BaseConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
-from open_rubric.query import QueryConfig
+from open_rubric.configs.query import QueryConfig
 
 
 class BaseEvaluatorConfig(BaseConfig):

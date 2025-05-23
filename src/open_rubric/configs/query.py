@@ -2,9 +2,9 @@ import typing as t
 
 import yaml
 
-from open_rubric.answers import AnswerConfig
-from open_rubric.base import BaseConfig
-from open_rubric.scoring import ScoringConfig
+from open_rubric.configs.answers import AnswerConfig
+from open_rubric.configs.base import BaseConfig
+from open_rubric.configs.scoring import ScoringConfig
 
 
 class QueryConfig(BaseConfig):

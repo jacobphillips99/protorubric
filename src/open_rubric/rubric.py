@@ -4,12 +4,12 @@ import typing as t
 
 import yaml
 
-from open_rubric.aggregating import AggregatedQueryConfig, AggregatorConfigs 
-from open_rubric.base import BaseConfig
-from open_rubric.dag import topological_levels
-from open_rubric.evaluating import EvaluatorConfigs
-from open_rubric.requirement import RequirementConfig, Requirements
-from open_rubric.scoring import ScoringConfigs
+from open_rubric.configs.aggregating import AggregatedQueryConfig, AggregatorConfigs 
+from open_rubric.configs.base import BaseConfig
+from open_rubric.utils.dag import topological_levels
+from open_rubric.configs.evaluating import EvaluatorConfigs
+from open_rubric.configs.requirement import RequirementConfig, Requirements
+from open_rubric.configs.scoring import ScoringConfigs
 
 
 class Rubric(BaseConfig):

@@ -1,6 +1,6 @@
 import typing as t
 
-from open_rubric.base import BaseConfig
+from open_rubric.configs.base import BaseConfig
 
 ScoreType = t.TypeVar("ScoreType")
 

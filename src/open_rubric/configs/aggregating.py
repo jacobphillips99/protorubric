@@ -8,9 +8,9 @@ import typing as t
 import numpy as np
 import yaml
 
-from open_rubric.base import BaseConfig
-from open_rubric.query import NULL_QUERY_CONFIG, QueryConfig
-from open_rubric.scoring import (
+from open_rubric.configs.base import BaseConfig
+from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
+from open_rubric.configs.scoring import (
     BinaryScoringConfig,
     ScoringConfig,
     continuous_scoring_configs,

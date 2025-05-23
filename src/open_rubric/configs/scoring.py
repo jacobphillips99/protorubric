@@ -12,13 +12,13 @@ import typing as t
 import yaml
 from pydantic import model_validator
 
-from open_rubric.answers import (
+from open_rubric.configs.answers import (
     AnyAnswerConfig,
     BoolAnswerConfig,
     FloatAnswerConfig,
     StringAnswerConfig,
 )
-from open_rubric.base import BaseConfig
+from open_rubric.configs.base import BaseConfig
 
 
 class ScoringConfig(BaseConfig):

@@ -5,19 +5,19 @@ import time
 
 import pandas as pd
 
-from open_rubric.aggregating import (
+from open_rubric.configs.aggregating import (
     ModeAggregatingConfig,
     NullAggregatingConfig,
     WeightedAverageAggregatingConfig,
     WeightedSumAggregatingConfig,
 )
-from open_rubric.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
+from open_rubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelRequest
-from open_rubric.query import NULL_QUERY_CONFIG, QueryConfig
-from open_rubric.requirement import RequirementConfig, Requirements
+from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
+from open_rubric.configs.requirement import RequirementConfig, Requirements
 from open_rubric.rubric import Rubric
-from open_rubric.scoring import name_to_scoring_config
+from open_rubric.configs.scoring import name_to_scoring_config
 
 rubric_path = "assets/example_rubrics/test_rubric.yaml"
 healthbench_path = "assets/healthbench.jsonl"
@@ -167,9 +167,7 @@ async def run_row(row: pd.Series, ours: bool) -> list[tuple[dict, dict]]:
                 for item in rubric_dicts
             ]
         )
-        rubric_responses = [
-            (rubric, result) for rubric, result in zip(rubric_dicts, results)
-        ]
+        rubric_responses = [(rubric, result) for rubric, result in zip(rubric_dicts, results)]
 
     else:
         requirement_configs = dict()
@@ -218,7 +216,8 @@ async def run_row(row: pd.Series, ours: bool) -> list[tuple[dict, dict]]:
 
         results = await rubric.asolve(inputs=construct_conversation_string(row.convo_with_response))
         rubric_responses = [
-            (req.model_dump(), results[req_name].model_dump()) for req_name, req in requirement_configs.items()
+            (req.model_dump(), results[req_name].model_dump())
+            for req_name, req in requirement_configs.items()
         ]
 
     return rubric_responses
@@ -234,7 +233,10 @@ if __name__ == "__main__":
     OUR_METHOD = True
 
     rubric_responses = asyncio.run(run_row(hb_df.iloc[0], ours=OUR_METHOD))
-    name_to_result = {req.get("name", f"rubric_item_{i}"): result for i, (req, result) in enumerate(rubric_responses)}
+    name_to_result = {
+        req.get("name", f"rubric_item_{i}"): result
+        for i, (req, result) in enumerate(rubric_responses)
+    }
     breakpoint()
     name_to_scores = {k: v.get("score", None) for k, v in name_to_result.items()}
     if OUR_METHOD:
