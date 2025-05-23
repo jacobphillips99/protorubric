@@ -94,5 +94,6 @@ class Rubric(BaseConfig):
         )
         return {req.name: aqr for req, aqr in zip(level, agg_query_results)}
 
-    def to_yaml(self, path: str) -> None:
-        raise NotImplementedError("Not implemented")
+    @property
+    def solved(self) -> bool:
+        return all(req.solved for req in self.requirements.get_all_requirements())

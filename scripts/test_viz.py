@@ -15,8 +15,9 @@ if __name__ == "__main__":
         rubric, inputs = make_hb_example()
     else:
         raise ValueError(f"Invalid version: {version}")
-    
+
     payload = {"rubric": rubric, "output_dir": VIZ_OUTPUT_DIR / version}
     if add_inputs:
         payload["inputs"] = inputs
-    visualize_rubric(**payload)
+    visualizer, rubric = visualize_rubric(**payload)
+    breakpoint()

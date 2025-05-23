@@ -5,6 +5,7 @@ pyyaml
 litellm
 pandas
 aiosqlite
+python-Levenshtein
 
 # rate limiter setup
 git+https://github.com/jacobphillips99/llm-rate-limiter.git

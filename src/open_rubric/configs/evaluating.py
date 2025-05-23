@@ -113,7 +113,7 @@ Does the assistant's response follow this rubric item? Rubric item: {query.instr
             provider=self.provider,
             model_input=ModelInput(prompt=prompt),
             model_kwargs=ModelKwargs(n_samples=self.n_samples),
-            response_format=AnyAnswerConfig
+            response_format=AnyAnswerConfig,
         )
         response = await MODEL.agenerate(model_request)
         try:

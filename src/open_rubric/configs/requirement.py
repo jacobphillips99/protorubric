@@ -65,6 +65,10 @@ class RequirementConfig(BaseConfig):
     def set_inputs(self, inputs: t.Any) -> None:
         self.query.inputs = inputs
 
+    @property
+    def solved(self) -> bool:
+        return self._result is not None
+
 
 class Requirements(BaseConfig):
     requirements: dict[str, RequirementConfig]

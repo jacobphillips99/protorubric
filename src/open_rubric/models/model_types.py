@@ -40,8 +40,10 @@ class ModelRequest(BaseModel):
     prepared_messages: t.Optional[list[ModelInput]] = None
     response_format: t.Optional[type[BaseModel]] = None
 
-    @field_serializer('response_format')
-    def serialize_response_format(self, value: t.Optional[type[BaseModel]]) -> t.Optional[dict[str, t.Any]]:
+    @field_serializer("response_format")
+    def serialize_response_format(
+        self, value: t.Optional[type[BaseModel]]
+    ) -> t.Optional[dict[str, t.Any]]:
         """Serialize response_format class to its JSON schema for hash consistency."""
         if value is None:
             return None

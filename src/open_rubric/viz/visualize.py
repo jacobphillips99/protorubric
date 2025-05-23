@@ -287,9 +287,7 @@ class RubricVisualizer:
             mpatches.Patch(
                 color=completion_color_map["completed"], label="✓ Completed (has result)"
             ),
-            mpatches.Patch(
-                color=completion_color_map["answered"], label="○ Answered (query only)"
-            ),
+            mpatches.Patch(color=completion_color_map["answered"], label="○ Answered (query only)"),
             mpatches.Patch(color=completion_color_map["pending"], label="- Pending"),
         ]
         ax_graph.legend(
@@ -433,9 +431,7 @@ class RubricVisualizer:
                     node_y.append(y)
 
                     # Add completion emoji to node display
-                    completion_emoji = {"completed": "✓", "answered": "○", "pending": "-"}[
-                        status
-                    ]
+                    completion_emoji = {"completed": "✓", "answered": "○", "pending": "-"}[status]
                     node_text.append(f"{completion_emoji} {node}")
 
                     # Create hover info with completion details
@@ -511,7 +507,7 @@ class RubricVisualizer:
 
 def visualize_rubric(
     rubric: t.Any, output_dir: t.Optional[str] = None, inputs: t.Optional[str] = None
-) -> RubricVisualizer:
+) -> tuple[RubricVisualizer, Rubric]:
     if isinstance(rubric, str) and rubric.endswith(".yaml"):
         rubric = Rubric.from_yaml(rubric)
     elif isinstance(rubric, Rubric):
@@ -534,7 +530,7 @@ def visualize_rubric(
             str(output_path / "plotly_interactive_graph.html")
         )
 
-    return visualizer
+    return visualizer, rubric
 
 
 def quick_graph_viz(
