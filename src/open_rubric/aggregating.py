@@ -7,9 +7,10 @@ import typing as t
 
 import numpy as np
 from scipy.stats import mode
+import yaml
 
 from open_rubric.base import BaseConfig
-from open_rubric.query import QueryConfig
+from open_rubric.query import NULL_QUERY_CONFIG, QueryConfig
 from open_rubric.scoring import (
     BinaryScoringConfig,
     ScoringConfig,
@@ -36,7 +37,31 @@ class AggregatedQueryConfig(BaseConfig):
 
 class BaseAggregatingConfig(BaseConfig):
     name: str
+    subtype: str
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
+
+    @classmethod
+    def from_data(cls, data: dict, **kwargs: t.Any) -> "BaseAggregatingConfig":
+        if isinstance(data, str):
+            if data in name_to_aggregating_config:
+                return name_to_aggregating_config[data](**kwargs)
+            else:
+                raise ValueError(f"Cannot find aggregating config with name {data}")
+        elif isinstance(data, dict):
+            agg_type = data.pop("subtype")
+            name = data.pop("name", agg_type)
+            if name in name_to_aggregating_config:
+                return name_to_aggregating_config[name](**{**data, "name": name})
+            else:
+                raise ValueError(f"Cannot find aggregating config with name {name}")
+        else:
+            raise ValueError(f"Invalid data type: {type(data)}")
+    
+    @classmethod
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "BaseAggregatingConfig":
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        return cls.from_data(data, **kwargs)
 
     def get_scores(self, queries: list[QueryConfig]) -> list[t.Any]:
         return [query.score for query in queries]
@@ -45,9 +70,12 @@ class BaseAggregatingConfig(BaseConfig):
         if self.valid_scoring_configs is not None:
             for query in queries:
                 assert (
-                    type(query.scoring_config) in self.valid_scoring_configs
+                    (query == NULL_QUERY_CONFIG)
+                    or type(query.scoring_config) in self.valid_scoring_configs
                 ), f"Invalid scoring config: {type(query.scoring_config)} for query {str(query)} in agg config {self.name} with valid configs {self.valid_scoring_configs}"
-        if not all([query.been_answered for query in queries]):
+        if not all(
+            [(query == NULL_QUERY_CONFIG) or query.been_answered for query in queries]
+        ):
             raise ValueError(
                 f"All queries must be answered before aggregation; got queries: {queries}"
             )
@@ -63,6 +91,7 @@ class NullAggregatingConfig(BaseAggregatingConfig):
     """
 
     name: str = "null"
+    subtype: str = "null"
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
@@ -76,6 +105,7 @@ class NullAggregatingConfig(BaseAggregatingConfig):
 
 class MeanAggregatingConfig(BaseAggregatingConfig):
     name: str = "mean"
+    subtype: str = "mean"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
@@ -90,10 +120,12 @@ class MeanAggregatingConfig(BaseAggregatingConfig):
 
 class MedianAggregatingConfig(BaseAggregatingConfig):
     name: str = "median"
+    subtype: str = "median"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
+
         score = np.median(self.get_scores(queries))
         return AggregatedQueryConfig(
             queries=queries,
@@ -104,12 +136,16 @@ class MedianAggregatingConfig(BaseAggregatingConfig):
 
 class ModeAggregatingConfig(BaseAggregatingConfig):
     name: str = "mode"
+    subtype: str = "mode"
     valid_scoring_configs: list[type[ScoringConfig]] = discrete_scoring_configs
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         self.check_queries(queries)
         scores = self.get_scores(queries)
-        score, count = mode(scores)
+        unique_scores, counts = np.unique(scores, return_counts=True)
+        max_idx = np.argmax(counts)
+        score = unique_scores[max_idx]
+        count = counts[max_idx]
         conf = count / len(scores)
         return AggregatedQueryConfig(
             queries=queries,
@@ -120,6 +156,7 @@ class ModeAggregatingConfig(BaseAggregatingConfig):
 
 class AllAggregatingConfig(BaseAggregatingConfig):
     name: str = "all"
+    subtype: str = "all"
     valid_scoring_configs: list[type[ScoringConfig]] = [BinaryScoringConfig]
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
@@ -134,6 +171,7 @@ class AllAggregatingConfig(BaseAggregatingConfig):
 
 class AnyAggregatingConfig(BaseAggregatingConfig):
     name: str = "any"
+    subtype: str = "any"
     valid_scoring_configs: list[type[ScoringConfig]] = [BinaryScoringConfig]
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
@@ -148,6 +186,7 @@ class AnyAggregatingConfig(BaseAggregatingConfig):
 
 class MaxAggregatingConfig(BaseAggregatingConfig):
     name: str = "max"
+    subtype: str = "max"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
@@ -162,6 +201,7 @@ class MaxAggregatingConfig(BaseAggregatingConfig):
 
 class MinAggregatingConfig(BaseAggregatingConfig):
     name: str = "min"
+    subtype: str = "min"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
@@ -176,29 +216,55 @@ class MinAggregatingConfig(BaseAggregatingConfig):
 
 class WeightedAggregatingConfig(BaseAggregatingConfig):
     name: str = "weighted"
+    subtype: str = "weighted"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
+    weights: t.Optional[list[float]] = None
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         assert (
-            "weights" in kwargs
+            "weights" in kwargs or self.weights is not None
         ), f"Weights must be provided for weighted aggregation; got kwargs: {kwargs}"
         raise NotImplementedError(f"Aggregating config {self.name} must implement __call__")
 
 
 class WeightedSumAggregatingConfig(BaseAggregatingConfig):
     name: str = "weighted_sum"
+    subtype: str = "weighted_sum"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
 
     def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
         assert (
-            "weights" in kwargs
-        ), f"Weights must be provided for weighted aggregation; got kwargs: {kwargs}"
-        weights = kwargs["weights"]
+            "weights" in kwargs or self.weights is not None
+        ), f"Weights must be provided for weighted aggregation; got kwargs: {kwargs} and weights: {self.weights}"
+        breakpoint()
+        weights = kwargs["weights"] if "weights" in kwargs else self.weights
         assert len(weights) == len(
             queries
         ), f"Weights must be the same length as queries; got weights: {weights} and queries: {queries}"
         self.check_queries(queries)
+        breakpoint()
         score = sum([query.score * weight for query, weight in zip(queries, weights)])
+        return AggregatedQueryConfig(
+            queries=queries,
+            score=score,
+            confidence=None,
+        )
+    
+class WeightedAverageAggregatingConfig(WeightedAggregatingConfig):
+    name: str = "weighted_average"
+    subtype: str = "weighted_average"
+    valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
+    
+    def __call__(self, queries: list[QueryConfig], **kwargs: t.Any) -> AggregatedQueryConfig:
+        assert (
+            "weights" in kwargs or self.weights is not None), f"Weights must be provided for weighted aggregation; got kwargs: {kwargs} and weights: {self.weights}"
+        weights = kwargs["weights"] if "weights" in kwargs else self.weights
+        breakpoint()
+        assert len(weights) == len(
+            queries
+        ), f"Weights must be the same length as queries; got weights: {weights} and queries: {queries}"
+        self.check_queries(queries)
+        score = sum([query.score * weight for query, weight in zip(queries, weights)]) / sum(weights)
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
@@ -219,16 +285,43 @@ name_to_aggregating_config = {
     "weighted_sum": WeightedSumAggregatingConfig,
 }
 
-all_aggregating_configs = list(name_to_aggregating_config.values())
-
+preset_aggregator_configs = [NullAggregatingConfig(), MeanAggregatingConfig(), MedianAggregatingConfig(), ModeAggregatingConfig(), AllAggregatingConfig(), AnyAggregatingConfig(), MaxAggregatingConfig(), MinAggregatingConfig()]
 
 class AggregatorConfigs(BaseConfig):
-    aggregators: dict[str, type[BaseAggregatingConfig]] = name_to_aggregating_config
+    aggregator_configs: dict[str, BaseAggregatingConfig]
+    
+    @classmethod
+    def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "AggregatorConfigs":
+        if isinstance(data, dict):
+            if "aggregator_configs" in data:
+                list_data: list[dict] = data["aggregator_configs"]
+        else:
+            list_data = data
+        configs: list[BaseAggregatingConfig] = []
+        for item in list_data:
+            if isinstance(item, str) and item.endswith(
+                ".yaml"
+            ):  # recursive loading of aggregator configs
+                configs.extend(AggregatorConfigs.from_yaml(item, **kwargs).aggregator_configs.values())
+            else:
+                configs.append(BaseAggregatingConfig.from_data(item, **kwargs))
+        all_names = [config.name for config in configs]
+        for present_config in preset_aggregator_configs:
+            if present_config.name not in all_names:
+                configs.append(present_config)
+        # todo: check for duplicate names
+        return cls(aggregator_configs={config.name: config for config in configs})
+
+    @classmethod
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "AggregatorConfigs":
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict):
+            data = data["aggregator_configs"]
+        return cls.from_data(data, **kwargs)
+    
 
     def get_config_by_name(self, name: str) -> type[BaseAggregatingConfig]:
-        if name not in self.aggregators:
-            return self.aggregators["null"]
-        return self.aggregators[name]
-
-
-aggregator_configs = AggregatorConfigs()
+        if name not in self.aggregator_configs:
+            raise ValueError(f"Cannot find aggregating config with name {name}; got aggregator configs: {self.aggregator_configs.keys()}")
+        return self.aggregator_configs[name]

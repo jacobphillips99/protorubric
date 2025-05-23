@@ -7,7 +7,7 @@ scoring_configs:
     min: 0
     max: 100
 
-evaluators:
+evaluator_configs:
   - name: my-sole-llm
     type: llm
     model: gpt-4.1

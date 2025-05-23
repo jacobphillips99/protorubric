@@ -3,14 +3,14 @@ import typing as t
 import yaml
 from pydantic import model_validator
 
-from open_rubric.aggregators import (
+from open_rubric.aggregating import (
     AggregatedQueryConfig,
     AggregatorConfigs,
     BaseAggregatingConfig,
     NullAggregatingConfig,
 )
 from open_rubric.base import BaseConfig
-from open_rubric.evaluators import BaseEvaluatorConfig, EvaluatorConfigs
+from open_rubric.evaluating import BaseEvaluatorConfig, EvaluatorConfigs
 from open_rubric.query import QueryConfig
 from open_rubric.scoring import ScoringConfig, ScoringConfigs
 
@@ -44,10 +44,10 @@ class RequirementConfig(BaseConfig):
         evaluator: BaseEvaluatorConfig = evaluator_configs.get_config_by_name(data["evaluator"])
         data["evaluator"] = evaluator
 
-        # replace string aggregator in data with AggregatedQueryConfig object
+        # replace string aggregator in data with AggregatorConfig object
         aggregator_configs: AggregatorConfigs = kwargs["aggregator_configs"]
         agg_name = data.get("aggregator", "null")
-        aggregator: BaseAggregatingConfig = aggregator_configs.get_config_by_name(agg_name)()
+        aggregator: BaseAggregatingConfig = aggregator_configs.get_config_by_name(agg_name)
         data["aggregator"] = aggregator
         return cls(**data)
 
@@ -72,12 +72,7 @@ class Requirements(BaseConfig):
 
     @classmethod
     def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "Requirements":
-        assert (
-            "scoring_configs" in kwargs
-        ), f"Scoring configs must be provided for requirements; got kwargs: {kwargs}"
-        assert (
-            "evaluator_configs" in kwargs
-        ), f"Evaluator configs must be provided for requirements; got kwargs: {kwargs}"
+        assert all(k in kwargs for k in ["scoring_configs", "evaluator_configs", "aggregator_configs"]), f"Missing required kwargs [scoring_configs, evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
         reqs = []
         for req in data:
             reqs.append(RequirementConfig.from_data(req, **kwargs))

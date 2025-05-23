@@ -4,10 +4,10 @@ import typing as t
 
 import yaml
 
-from open_rubric.aggregators import AggregatedQueryConfig, aggregator_configs
+from open_rubric.aggregating import AggregatedQueryConfig, AggregatorConfigs 
 from open_rubric.base import BaseConfig
 from open_rubric.dag import topological_levels
-from open_rubric.evaluators import EvaluatorConfigs
+from open_rubric.evaluating import EvaluatorConfigs
 from open_rubric.requirement import RequirementConfig, Requirements
 from open_rubric.scoring import ScoringConfigs
 
@@ -20,7 +20,8 @@ class Rubric(BaseConfig):
         assert "scoring_configs" in data, f"Rubric must contain scoring_configs; got {data.keys()}"
         assert "requirements" in data, f"Rubric must contain requirements; got {data.keys()}"
         scoring_configs = ScoringConfigs.from_data_or_yaml(data["scoring_configs"])
-        evaluator_configs = EvaluatorConfigs.from_data_or_yaml(data["evaluators"])
+        evaluator_configs = EvaluatorConfigs.from_data_or_yaml(data["evaluator_configs"])
+        aggregator_configs = AggregatorConfigs.from_data_or_yaml(data["aggregator_configs"]) if "aggregator_configs" in data else AggregatorConfigs.from_data([])
         requirements = Requirements.from_data(
             data["requirements"],
             scoring_configs=scoring_configs,
@@ -39,8 +40,6 @@ class Rubric(BaseConfig):
         self,
         inputs: t.Any,  # TODO: fix any
     ) -> dict[str, AggregatedQueryConfig]:
-        # solve the DAG of requirements; prepend any requirements without dependencies
-
         # check if inputs need to be added to requirements
         all_requirements = self.requirements.get_all_requirements()
         for req in all_requirements:
@@ -55,7 +54,7 @@ class Rubric(BaseConfig):
 
         print(f"\n\nFound {len(level_sorted_reqs)} levels")
         for i, level in enumerate(level_sorted_reqs):
-            print("--------------------------------")
+            print("-" * 100)
             print(
                 f"Solving level {i + 1} of {len(level_sorted_reqs)} over requirements: {[req.name for req in level]}"
             )
@@ -66,6 +65,8 @@ class Rubric(BaseConfig):
                 f"Solved level {i + 1} of {len(level_sorted_reqs)} in {round(toc - tic, 2)} seconds"
             )
             results.update(level_results)
+            print(f"len results: {len(results)}")
+        print("-" * 100)
         return results
 
     async def asolve_level(

@@ -182,6 +182,7 @@ name_to_scoring_config = {
     **subtype_to_discrete_scoring_configs,
     **subtype_to_continuous_scoring_configs,
 }
+preset_scoring_configs = [BinaryScoringConfig(), UnitScalarScoringConfig()]
 
 
 class ScoringConfigs(BaseConfig):
@@ -203,7 +204,10 @@ class ScoringConfigs(BaseConfig):
             else:
                 configs.append(ScoringConfig.from_data(item, **kwargs))
         all_names = [config.name for config in configs]
-        assert len(all_names) == len(set(all_names)), f"Duplicate scoring config names! {all_names}"
+        for present_config in preset_scoring_configs:
+            if present_config.name not in all_names:
+                configs.append(present_config)
+        # todo: check for duplicate names
         return cls(scoring_configs={config.name: config for config in configs})
 
     @classmethod

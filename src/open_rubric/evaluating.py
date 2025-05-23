@@ -6,7 +6,7 @@ import litellm
 import yaml
 from pydantic import model_validator
 
-from open_rubric.aggregators import AggregatedQueryConfig
+from open_rubric.aggregating import AggregatedQueryConfig
 from open_rubric.base import BaseConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
@@ -24,14 +24,16 @@ class BaseEvaluatorConfig(BaseConfig):
                 return ModelEvaluatorConfig.from_data(data, **kwargs)
             elif data["type"] == "llm-ensemble":
                 return EnsembledModelEvaluatorConfig.from_data(data, **kwargs)
+            elif data["type"] == "pass-through":
+                return PassThroughEvaluatorConfig()
         raise ValueError(f"Invalid evaluator type: {data['type']}")
 
     @classmethod
     def from_yaml(cls, path: str, **kwargs: t.Any) -> "BaseEvaluatorConfig":
         with open(path, "r") as f:
             data = yaml.safe_load(f)
-        if "evaluators" in data:
-            data = data["evaluators"]
+        if "evaluator_configs" in data:
+            data = data["evaluator_configs"]
         return cls.from_data(data, **kwargs)
 
     async def async_call(
@@ -41,6 +43,24 @@ class BaseEvaluatorConfig(BaseConfig):
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
         raise NotImplementedError(f"Evaluator {self.name} must implement async_call")
+
+class PassThroughEvaluatorConfig(BaseEvaluatorConfig):
+    """
+    Special class to skip evaluation and just return the dependent results as the answer
+    """
+    name: str = "pass-through"
+    type: t.Literal["pass-through"] = "pass-through"
+
+    async def async_call(
+        self,
+        query: QueryConfig,
+        dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
+        **kwargs: t.Any,
+    ) -> list[QueryConfig]:
+        outputs = []
+        for _, agg_query in dependent_results.items():
+            outputs.extend(agg_query.queries)
+        return outputs
 
 
 class ModelEvaluatorConfig(BaseEvaluatorConfig):
@@ -171,26 +191,26 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
 
 
 class EvaluatorConfigs(BaseConfig):
-    evaluators: dict[str, BaseEvaluatorConfig]
+    evaluator_configs: dict[str, BaseEvaluatorConfig]
 
     @classmethod
     def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "EvaluatorConfigs":
-        evaluators: list[BaseEvaluatorConfig] = []
+        evaluator_configs: list[BaseEvaluatorConfig] = []
         for evaluator in data:
             if isinstance(evaluator, str) and evaluator.endswith(".yaml"):
-                # recursive loading of evaluators
-                evaluators.extend(EvaluatorConfigs.from_yaml(evaluator).evaluators.values())
+                # recursive loading of evaluator_configs
+                evaluator_configs.extend(EvaluatorConfigs.from_yaml(evaluator).evaluator_configs.values())
             else:
-                evaluators.append(BaseEvaluatorConfig.from_data(evaluator))
-        return cls(evaluators={evaluator.name: evaluator for evaluator in evaluators})
+                evaluator_configs.append(BaseEvaluatorConfig.from_data(evaluator))
+        return cls(evaluator_configs={evaluator.name: evaluator for evaluator in evaluator_configs})
 
     @classmethod
     def from_yaml(cls, path: str, **kwargs: t.Any) -> "EvaluatorConfigs":
         with open(path, "r") as f:
             data = yaml.safe_load(f)
-        if "evaluators" in data:
-            data = data["evaluators"]
+        if "evaluator_configs" in data:
+            data = data["evaluator_configs"]
         return cls.from_data(data, **kwargs)
 
     def get_config_by_name(self, name: str) -> BaseEvaluatorConfig:
-        return self.evaluators[name]
+        return self.evaluator_configs[name]

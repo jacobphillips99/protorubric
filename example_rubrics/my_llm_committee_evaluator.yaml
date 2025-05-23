@@ -1,4 +1,4 @@
-evaluators:
+evaluator_configs:
   - name: my-llm-committee
     type: llm-ensemble
     models:
