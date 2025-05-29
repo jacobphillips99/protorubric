@@ -52,6 +52,9 @@ class ScoringConfig(BaseConfig):
 
     def to_prompt(self) -> str:
         raise NotImplementedError(f"Scoring config {self.name} must implement to_prompt")
+    
+    def to_description(self) -> str:
+        raise NotImplementedError(f"Scoring config {self.name} must implement to_description")
 
 
 class DiscreteScoringConfig(ScoringConfig):
@@ -85,6 +88,9 @@ Use the following format:
 
 Do not include and other text; do not use "```json" or "```" anywhere in your response.
 """.strip()
+    
+    def to_description(self) -> str: 
+        return f"{self.subtype.replace('_', ' ')} options: {self.options}"
 
     def parse_response(self, response: str) -> AnyAnswerConfig:
         data = json.loads(response)
@@ -130,10 +136,12 @@ class ContinuousScoringConfig(ScoringConfig):
     inclusive_min: bool = True
     inclusive_max: bool = True
 
+    def get_scoring_range(self) -> str:
+        return f"{'[' if self.inclusive_min else '('}{self.min}, {self.max}{']' if self.inclusive_max else ')'}"
+
     def to_prompt(self) -> str:
-        scoring_range = f"{'[' if self.inclusive_min else '('}{self.min}, {self.max}{']' if self.inclusive_max else ')'}"
         return f"""
-Score the response by providing an answer based on the following range: {scoring_range}. Respond with ONLY that number.
+Score the response by providing an answer based on the following range: {self.get_scoring_range()}. Respond with ONLY that number.
 Respond with a valid JSON object with the following keys:
 - score: the score you chose from the range
 - reasoning: the reasoning for your score
@@ -146,6 +154,9 @@ Use the following format:
 
 Do not include and other text; do not use "```json" or "```" anywhere in your response.
 """.strip()
+    
+    def to_description(self) -> str:
+        return f"{self.subtype.replace('_', ' ')} range: {self.get_scoring_range()}"
 
     def parse_response(self, response: str) -> FloatAnswerConfig:
         data = json.loads(response)

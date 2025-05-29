@@ -39,36 +39,52 @@ class Rubric(BaseConfig):
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
+    
+    def setup_graph(self, inputs: t.Any) -> list[list[RequirementConfig]]:
+        # check if inputs need to be added to requirements
+        self.requirements.update_with_inputs(inputs)
+
+        # get topological levels of requirements via dependencies
+        level_sorted_requirement_names = topological_levels(self.requirements.dependencies)
+        level_sorted_reqs = [
+            [self.requirements.get_requirement_by_name(req) for req in level]
+            for level in level_sorted_requirement_names
+        ]
+        print(f"\n\nFound {len(level_sorted_reqs)} levels")
+        return level_sorted_reqs
+    
+    def update_state(self, state: dict[str, AggregatedQueryConfig], level_results: dict[str, AggregatedQueryConfig]) -> dict[str, AggregatedQueryConfig]:
+        """
+        Updates the state dictionary with the results of the current level.
+        """
+        state.update(level_results)
+        return state
+
 
     async def asolve(
         self,
         inputs: t.Any,  # TODO: fix any
     ) -> dict[str, AggregatedQueryConfig]:
-        # check if inputs need to be added to requirements
-        all_requirements = self.requirements.get_all_requirements()
-        for req in all_requirements:
-            if not req.query.inputs:
-                req.query.inputs = inputs
+        # setup graph of requirements and their dependencies
+        level_sorted_reqs = self.setup_graph(inputs)
 
+        # initialize results / solved requirements dictionary
         results: dict[str, AggregatedQueryConfig] = dict()
-        level_sorted_reqs = [
-            [self.requirements.get_requirement_by_name(req) for req in level]
-            for level in topological_levels(self.requirements.dependencies)
-        ]
+        state: dict[str, AggregatedQueryConfig] = dict()
 
-        print(f"\n\nFound {len(level_sorted_reqs)} levels")
         for i, level in enumerate(level_sorted_reqs):
             print("-" * 100)
             print(
                 f"Solving level {i + 1} of {len(level_sorted_reqs)} over requirements: {[req.name for req in level]}"
             )
             tic = time.time()
-            level_results = await self.asolve_level(level, results)
+            level_results = await self.asolve_level(level, state)
             toc = time.time()
             print(
                 f"Solved level {i + 1} of {len(level_sorted_reqs)} in {round(toc - tic, 2)} seconds"
             )
             results.update(level_results)
+            state = self.update_state(state, level_results)
             print(f"len results: {len(results)}")
         print("-" * 100)
         return results
@@ -79,12 +95,16 @@ class Rubric(BaseConfig):
     async def asolve_level(
         self,
         level: list[RequirementConfig],
-        results: dict[str, AggregatedQueryConfig],
+        state: dict[str, AggregatedQueryConfig],
     ) -> dict[str, AggregatedQueryConfig]:
+        """
+        Solves one level of the rubric's DAG of requirements with the current state of the rubric.
+        Returns a dictionary of results for each requirement in the level.
+        """
         payloads: list[tuple[RequirementConfig, dict[str, t.Any]]] = []
         for req in level:
             dependent_results = (
-                {dep_name: results[dep_name] for dep_name in req.dependency_names}
+                {dep_name: state[dep_name] for dep_name in req.dependency_names}
                 if req.dependency_names is not None
                 else None
             )

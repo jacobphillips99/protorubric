@@ -17,7 +17,7 @@ from open_rubric.configs.scoring import (
     discrete_scoring_configs,
 )
 
-
+ 
 class AggregatedQueryConfig(BaseConfig):
     queries: list[
         t.Union[QueryConfig, "AggregatedQueryConfig"]
@@ -34,7 +34,7 @@ class AggregatedQueryConfig(BaseConfig):
 
     def get_reasonings(self) -> list[str | None]:
         return [query.reasoning for query in self.queries]
-
+    
 
 class BaseAggregatingConfig(BaseConfig):
     name: str

@@ -63,7 +63,8 @@ class RequirementConfig(BaseConfig):
         return aggregated_query
 
     def set_inputs(self, inputs: t.Any) -> None:
-        self.query.inputs = inputs
+        if self.query.inputs is None:
+            self.query.inputs = inputs
 
     @property
     def solved(self) -> bool:
@@ -108,6 +109,10 @@ class Requirements(BaseConfig):
 
     def get_all_requirements(self) -> list[RequirementConfig]:
         return list(self.requirements.values())
+    
+    def update_with_inputs(self, inputs: t.Any) -> None:
+        for req in self.get_all_requirements():
+            req.set_inputs(inputs)
 
     @model_validator(mode="before")
     def check_dependencies(cls, data: dict) -> dict:

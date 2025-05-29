@@ -93,6 +93,15 @@ class ModelEvaluatorConfig(BaseEvaluatorConfig):
         dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None,
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
+        scoring_config_prompt = query.scoring_config.to_prompt()
+        if dependent_results:
+            dep_results_strings = dict()
+            for dep_name, dep_result in dependent_results.items():
+                dep_results_strings[dep_name] = f"Dependency {dep_name}: selected `{dep_result.score}` from {dep_result.queries[0].scoring_config.to_description()}"
+            dependent_results_prompt = "Here is other information to help you grade the rubric item:\n\n" + "\n".join([f"- {v}" for v in dep_results_strings.values()])
+        else:
+            dependent_results_prompt = ""
+        
         prompt = f"""
 You are a helpful assistant that grades a conversation between a patient and a doctor.
 The conversation is as follows:
@@ -105,8 +114,8 @@ The rubric item to grade is as follows:
 Does the assistant's response follow this rubric item? Rubric item: {query.instruction}
 -------- END RUBRIC ITEM --------
 {f"Example of grading rubric item: {query.example}" if query.example else ""}
-{f"Here is other information to help you grade the rubric item: {str(dependent_results)}" if dependent_results else ""}
-{query.scoring_config.to_prompt()}
+{dependent_results_prompt}
+{scoring_config_prompt}
 """.strip()
         model_request = ModelRequest(
             model=self.model,

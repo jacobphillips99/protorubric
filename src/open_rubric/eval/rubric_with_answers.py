@@ -1,10 +1,20 @@
-from collections import defaultdict
-import numpy as np
-from open_rubric.configs.answers import AnswerConfig, BoolAnswerConfig, FloatAnswerConfig, IntAnswerConfig, StringAnswerConfig
-from open_rubric.eval.metrics import map_answer_type_to_metrics
-from open_rubric.rubric import Rubric
-from open_rubric.configs.aggregating import AggregatedQueryConfig
+import copy
 import typing as t
+from collections import defaultdict
+
+import numpy as np
+
+from open_rubric.configs.aggregating import AggregatedQueryConfig
+from open_rubric.configs.answers import (
+    AnswerConfig,
+    BoolAnswerConfig,
+    FloatAnswerConfig,
+    IntAnswerConfig,
+    StringAnswerConfig,
+)
+from open_rubric.configs.query import NULL_QUERY_CONFIG
+from open_rubric.eval.metrics import results_to_metrics
+from open_rubric.rubric import Rubric
 
 
 def generate_test_answers(rubric: Rubric) -> dict[str, t.Any]:
@@ -26,34 +36,44 @@ def generate_test_answers(rubric: Rubric) -> dict[str, t.Any]:
 
 class RubricWithAnswers(Rubric):
     answers: dict[str, t.Any]
+    teacher_force: bool = False # wether or not to use the answers DURING rubric evaluation
 
     @classmethod
-    def from_rubric_and_answers(cls, rubric: Rubric, answers: dict[str, t.Any]) -> "RubricWithAnswers":
+    def from_rubric_and_answers(
+        cls, rubric: Rubric, answers: dict[str, t.Any]
+    ) -> "RubricWithAnswers":
         return cls(requirements=rubric.requirements, answers=answers)
 
-
-    def run_metrics(self) -> dict[str, float]:
+    def run_metrics(self) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
         assert self.solved, "Rubric must be solved to run metrics"
-        assert all(k in self.answers for k in [req.name for req in self.requirements.get_all_requirements()]), "All requirements must have answers"
+        assert all(
+            k in self.answers
+            for k in [req.name for req in self.requirements.get_all_requirements()]
+        ), "All requirements must have answers"
 
-        req_results = {k:v._result.score for k,v in self.requirements.requirements.items()}
-        metrics_functions_per_req = {k: map_answer_type_to_metrics(type(v)) for k,v in req_results.items()}
-
-        req_to_metric_to_score = defaultdict(dict)
-        for req_name, metric_functions in metrics_functions_per_req.items():
-            for metric_name, metric_func in metric_functions.items():
-                req_to_metric_to_score[req_name][metric_name] = metric_func(self.answers[req_name], req_results[req_name])
-
-        metric_to_results = defaultdict(list)
-        for req_name, metric_to_score in req_to_metric_to_score.items():
-            for metric_name, score in metric_to_score.items():
-                metric_to_results[metric_name].append(score)
-
-        metric_to_mean_score = {k: dict(mean=np.mean(v), std=np.std(v), n=len(v)) for k,v in metric_to_results.items()}
+        # {Requirement name: score}
+        req_to_results = {k: v._result.score for k, v in self.requirements.requirements.items()}
+        req_to_metric_to_score, metric_to_mean_score = results_to_metrics(req_to_results, self.answers)
         breakpoint()
-
-        # metrics = {}
-        # for req in self.requirements.get_all_requirements():
-        #     metrics[req.name] = map_scoring_config_to_metric(self.answers[req.name])
-        # return metrics
-
+        return req_to_metric_to_score, metric_to_mean_score
+    
+    def update_state(self, state: dict[str, AggregatedQueryConfig], level_results: dict[str, AggregatedQueryConfig]) -> dict[str, AggregatedQueryConfig]:
+        """
+        Adds teacher forcing to the state dictionary. If teacher_force is True, the state dictionary is updated with the answers.
+        # TODO: currently adding a null query config because we don't have a reasoning / scoring config for the answer
+        """
+        for req_name, agg_query_config in level_results.items():
+            # TODO: should probably use the original AQC here somehow?
+            if self.teacher_force and req_name in self.answers:
+                scoring_config = agg_query_config.queries[0].scoring_config
+                this_null_query_config = copy.deepcopy(NULL_QUERY_CONFIG)
+                this_null_query_config.scoring_config = scoring_config
+                state[req_name] = AggregatedQueryConfig(
+                    queries=[this_null_query_config],
+                    score=self.answers[req_name],
+                    confidence=None,
+                )
+            else:
+                state[req_name] = agg_query_config
+        return state
+        

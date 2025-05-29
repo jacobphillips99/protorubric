@@ -12,7 +12,9 @@ glacial melt, cascade down rocky channels, their waters eventually joining to fo
 these valleys over millennia. This timeless landscape serves as a humbling reminder of nature's raw power and beauty.""".strip()
 
 from .healthbench_tester import make_hb_example
+
 hb_rubric, hb_inputs = make_hb_example()
+
 
 async def run(rubric: Rubric | str, inputs: str) -> tuple[Rubric, list[AggregatedQueryConfig]]:
     rubric = Rubric.from_yaml(rubric) if isinstance(rubric, str) else rubric
@@ -21,8 +23,8 @@ async def run(rubric: Rubric | str, inputs: str) -> tuple[Rubric, list[Aggregate
 
 
 if __name__ == "__main__":
-    # rubric, results = asyncio.run(run(TEST_RUBRIC_PATH, TEST_INPUTS))
-    rubric, results = asyncio.run(run(hb_rubric, hb_inputs))
+    rubric, results = asyncio.run(run(TEST_RUBRIC_PATH, TEST_INPUTS))
+    # rubric, results = asyncio.run(run(hb_rubric, hb_inputs))
     answers = generate_test_answers(rubric)
     rubric_with_answers = RubricWithAnswers.from_rubric_and_answers(rubric, answers)
     rubric_with_answers.run_metrics()
