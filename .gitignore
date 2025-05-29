@@ -182,5 +182,5 @@ assets/hb_df.csv
 assets/request_cache.db
 assets/viz_outputs/*
 !assets/viz_outputs/.gitkeep
-!assets/eval/*
+assets/eval/*
 !assets/eval/.gitkeep
