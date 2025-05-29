@@ -47,7 +47,8 @@ class ModelRequest(BaseModel):
         """Serialize response_format class to its JSON schema for hash consistency."""
         if value is None:
             return None
-        return value.model_json_schema()
+        schema: dict[str, t.Any] = value.model_json_schema()
+        return schema
 
     @model_validator(mode="before")
     def set_provider(cls, data: dict) -> dict:
@@ -83,14 +84,13 @@ class ModelResponse(BaseModel):
     usage: dict[str, t.Any] = Field(default_factory=dict)
     raw_response: t.Optional[dict[str, t.Any]] = None
     stop_reason: t.Optional[str] = None
+    system_fingerprint: t.Optional[str] = None
 
     @classmethod
     def from_litellm_response(
         cls, litellm_response: LiteLLMResponse, request: ModelRequest, response_ms: float
     ) -> "ModelResponse":
-        texts = [
-            choice.message.content for choice in litellm_response.choices
-        ]  # TODO -- multiple return choices?
+        texts = [choice.message.content for choice in litellm_response.choices]
         usage = litellm_response.usage.model_dump() if hasattr(litellm_response, "usage") else {}
         return cls(
             texts=texts,
@@ -101,6 +101,7 @@ class ModelResponse(BaseModel):
             raw_response=(
                 litellm_response.model_dump() if hasattr(litellm_response, "model_dump") else None
             ),
+            system_fingerprint=litellm_response.system_fingerprint,
         )
 
 

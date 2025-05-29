@@ -63,7 +63,7 @@ class DiscreteScoringConfig(ScoringConfig):
     subtype: str = "discrete"
     type: t.Literal["discrete"] = "discrete"
     options: list[t.Any]
-    answer_type: t.Type[AnyAnswerConfig]  = AnyAnswerConfig
+    answer_type: t.Type[AnyAnswerConfig] = AnyAnswerConfig
 
     @model_validator(mode="after")
     def check_options(self) -> "DiscreteScoringConfig":
@@ -201,6 +201,7 @@ name_to_scoring_config = {
     **subtype_to_continuous_scoring_configs,
 }
 preset_scoring_configs = [BinaryScoringConfig(), UnitScalarScoringConfig()]
+
 
 class ScoringConfigs(BaseConfig):
     scoring_configs: dict[str, ScoringConfig]

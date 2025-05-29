@@ -1,4 +1,6 @@
 import asyncio
+import os
+import pickle
 import time
 import typing as t
 
@@ -120,3 +122,16 @@ class Rubric(BaseConfig):
     @property
     def solved(self) -> bool:
         return all(req.solved for req in self.requirements.get_all_requirements())
+
+    def save_pkl(self, path: str) -> None:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def load_pkl(cls, path: str) -> "Rubric":
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Rubric pkl file not found at {path}")
+        with open(path, "rb") as f:
+            rubric: "Rubric" = pickle.load(f)
+        return rubric

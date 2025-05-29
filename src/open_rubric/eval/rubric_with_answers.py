@@ -1,21 +1,13 @@
 import copy
 import typing as t
-from collections import defaultdict
 
 import numpy as np
 
 from open_rubric.configs.aggregating import AggregatedQueryConfig
-from open_rubric.configs.answers import (
-    AnswerConfig,
-    BoolAnswerConfig,
-    FloatAnswerConfig,
-    IntAnswerConfig,
-    StringAnswerConfig,
-)
+from open_rubric.configs.answers import ANSWER_TYPE_TO_SCORE_TYPE_MAPPING
 from open_rubric.configs.query import NULL_QUERY_CONFIG
 from open_rubric.eval.metrics import results_to_metrics
 from open_rubric.rubric import Rubric
-from open_rubric.configs.answers import ANSWER_TYPE_TO_SCORE_TYPE_MAPPING
 
 
 def generate_test_answers(rubric: Rubric) -> dict[str, t.Any]:
@@ -38,6 +30,9 @@ def generate_test_answers(rubric: Rubric) -> dict[str, t.Any]:
 class RubricWithAnswers(Rubric):
     answers: dict[str, t.Any]
     teacher_force: bool = False  # whether or not to use the answers DURING rubric evaluation
+    _results_metrics: t.Optional[dict[str, dict[str, dict[str, float]]]] = (
+        None  # cached results metrics
+    )
 
     @classmethod
     def from_rubric_and_answers(
@@ -45,7 +40,7 @@ class RubricWithAnswers(Rubric):
     ) -> "RubricWithAnswers":
         return cls(requirements=rubric.requirements, answers=answers, **kwargs)
 
-    def run_metrics(self) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
+    def run_metrics(self) -> dict[str, dict[str, dict[str, float]]]:
         assert self.solved, "Rubric must be solved to run metrics"
         assert all(
             k in self.answers
@@ -53,11 +48,19 @@ class RubricWithAnswers(Rubric):
         ), "All requirements must have answers"
 
         # {Requirement name: score}
-        req_to_results = {k: v._result.score for k, v in self.requirements.requirements.items()}
+        req_to_results = {
+            k: v._result.score
+            for k, v in self.requirements.requirements.items()
+            if v._result is not None
+        }
         req_to_metric_to_score, metric_to_mean_score = results_to_metrics(
             req_to_results, self.answers
         )
-        return req_to_metric_to_score, metric_to_mean_score
+        self._results_metrics = {
+            "requirements": req_to_metric_to_score,
+            "metrics": metric_to_mean_score,
+        }
+        return self._results_metrics
 
     def update_state(
         self,
@@ -83,3 +86,8 @@ class RubricWithAnswers(Rubric):
             else:
                 state[req_name] = agg_query_config
         return state
+
+    def save_pkl(self, path: str) -> None:
+        if not self._results_metrics:
+            self.run_metrics()
+        super().save_pkl(path)
