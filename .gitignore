@@ -177,8 +177,8 @@ cython_debug/
 .DS_Store
 
 # ignore data samples
-assets/healthbench.jsonl
-assets/hb_df.csv
+assets/examples/healthbench/healthbench.jsonl
+assets/examples/healthbench/healthbench_with_completions_df.csv
 assets/request_cache.db
 assets/viz_outputs/*
 !assets/viz_outputs/.gitkeep

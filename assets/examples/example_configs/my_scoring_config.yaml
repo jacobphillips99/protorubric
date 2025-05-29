@@ -11,4 +11,4 @@ scoring_configs:
     max: 5
     inclusive_min: True
     inclusive_max: False
-  - assets/example_rubrics/my_tiered_scoring_config.yaml
+  - assets/examples/example_configs/my_tiered_scoring_config.yaml

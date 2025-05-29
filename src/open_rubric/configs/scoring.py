@@ -3,7 +3,7 @@ Determines methods of scoring rubric items, like unit_scalar, binary, categorica
 Defines basic interface for scoring configs and base classes for discrete and continuous scoring configs.
 Configs can be defined in YAML files and loaded into the scoring configs object; recursive loading is supported.
 
-See assets/example_rubrics/test_rubric.yaml for an example of a top-level scoring config which contains other scoring configs, like assets/example_rubrics/my_scoring_config.yaml.
+See assets/examples/example_configs/test_rubric.yaml for an example of a top-level scoring config which contains other scoring configs, like assets/examples/example_configs/my_scoring_config.yaml.
 """
 
 import json

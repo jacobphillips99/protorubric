@@ -9,7 +9,7 @@ from open_rubric.rubric import Rubric
 
 from .healthbench_tester import make_hb_example
 
-TEST_RUBRIC_PATH = "assets/example_rubrics/test_rubric.yaml"
+TEST_RUBRIC_PATH = "assets/examples/example_configs/test_rubric.yaml"
 TEST_INPUTS = """The majestic mountains stand tall against the azure sky, their snow-capped peaks piercing through wispy clouds.
 Sunlight dances across ancient granite faces that have witnessed countless seasons pass. Below, dense forests of
 pine and fir blanket the rugged slopes, providing shelter to diverse wildlife. Crystal clear streams, fed by
