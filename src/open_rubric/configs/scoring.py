@@ -25,6 +25,7 @@ class ScoringConfig(BaseConfig):
     name: str = ""
     subtype: str = ""
     type: t.Literal["discrete", "continuous", "base"] = "base"
+    answer_type: t.Type[AnyAnswerConfig] = AnyAnswerConfig
 
     @classmethod
     def from_data(cls, data: dict | str, **kwargs: t.Any) -> "ScoringConfig":
@@ -52,7 +53,7 @@ class ScoringConfig(BaseConfig):
 
     def to_prompt(self) -> str:
         raise NotImplementedError(f"Scoring config {self.name} must implement to_prompt")
-    
+
     def to_description(self) -> str:
         raise NotImplementedError(f"Scoring config {self.name} must implement to_description")
 
@@ -62,6 +63,7 @@ class DiscreteScoringConfig(ScoringConfig):
     subtype: str = "discrete"
     type: t.Literal["discrete"] = "discrete"
     options: list[t.Any]
+    answer_type: t.Type[AnyAnswerConfig]  = AnyAnswerConfig
 
     @model_validator(mode="after")
     def check_options(self) -> "DiscreteScoringConfig":
@@ -88,8 +90,8 @@ Use the following format:
 
 Do not include and other text; do not use "```json" or "```" anywhere in your response.
 """.strip()
-    
-    def to_description(self) -> str: 
+
+    def to_description(self) -> str:
         return f"{self.subtype.replace('_', ' ')} options: {self.options}"
 
     def parse_response(self, response: str) -> AnyAnswerConfig:
@@ -105,6 +107,7 @@ class BinaryScoringConfig(DiscreteScoringConfig):
     name: str = "binary"
     subtype: str = "binary"
     options: list[str] = ["true", "false"]  # JSON compatible
+    answer_type: t.Type[BoolAnswerConfig] = BoolAnswerConfig
 
     def parse_response(self, response: str) -> BoolAnswerConfig:
         data = json.loads(response)
@@ -119,6 +122,7 @@ class CategoricalScoringConfig(DiscreteScoringConfig):
     name: str = "categorical"
     subtype: str = "categorical"
     options: list[str]
+    answer_type: t.Type[StringAnswerConfig] = StringAnswerConfig
 
     def parse_response(self, response: str) -> StringAnswerConfig:
         data = json.loads(response)
@@ -135,6 +139,7 @@ class ContinuousScoringConfig(ScoringConfig):
     max: t.Optional[t.Union[int, float]]
     inclusive_min: bool = True
     inclusive_max: bool = True
+    answer_type: t.Type[FloatAnswerConfig] = FloatAnswerConfig
 
     def get_scoring_range(self) -> str:
         return f"{'[' if self.inclusive_min else '('}{self.min}, {self.max}{']' if self.inclusive_max else ')'}"
@@ -154,7 +159,7 @@ Use the following format:
 
 Do not include and other text; do not use "```json" or "```" anywhere in your response.
 """.strip()
-    
+
     def to_description(self) -> str:
         return f"{self.subtype.replace('_', ' ')} range: {self.get_scoring_range()}"
 
@@ -196,7 +201,6 @@ name_to_scoring_config = {
     **subtype_to_continuous_scoring_configs,
 }
 preset_scoring_configs = [BinaryScoringConfig(), UnitScalarScoringConfig()]
-
 
 class ScoringConfigs(BaseConfig):
     scoring_configs: dict[str, ScoringConfig]

@@ -39,7 +39,7 @@ class Rubric(BaseConfig):
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
-    
+
     def setup_graph(self, inputs: t.Any) -> list[list[RequirementConfig]]:
         # check if inputs need to be added to requirements
         self.requirements.update_with_inputs(inputs)
@@ -52,14 +52,17 @@ class Rubric(BaseConfig):
         ]
         print(f"\n\nFound {len(level_sorted_reqs)} levels")
         return level_sorted_reqs
-    
-    def update_state(self, state: dict[str, AggregatedQueryConfig], level_results: dict[str, AggregatedQueryConfig]) -> dict[str, AggregatedQueryConfig]:
+
+    def update_state(
+        self,
+        state: dict[str, AggregatedQueryConfig],
+        level_results: dict[str, AggregatedQueryConfig],
+    ) -> dict[str, AggregatedQueryConfig]:
         """
         Updates the state dictionary with the results of the current level.
         """
         state.update(level_results)
         return state
-
 
     async def asolve(
         self,

@@ -109,7 +109,7 @@ class Requirements(BaseConfig):
 
     def get_all_requirements(self) -> list[RequirementConfig]:
         return list(self.requirements.values())
-    
+
     def update_with_inputs(self, inputs: t.Any) -> None:
         for req in self.get_all_requirements():
             req.set_inputs(inputs)

@@ -12,20 +12,23 @@ glacial melt, cascade down rocky channels, their waters eventually joining to fo
 these valleys over millennia. This timeless landscape serves as a humbling reminder of nature's raw power and beauty.""".strip()
 
 from .healthbench_tester import make_hb_example
+import typing as t
 
 hb_rubric, hb_inputs = make_hb_example()
 
 
-async def run(rubric: Rubric | str, inputs: str) -> tuple[Rubric, list[AggregatedQueryConfig]]:
-    rubric = Rubric.from_yaml(rubric) if isinstance(rubric, str) else rubric
-    results = await rubric.asolve(inputs)
-    return rubric, results
+async def run(rubric_path: str, inputs: t.Any, teacher_force: bool = False, ) -> tuple[Rubric, list[AggregatedQueryConfig]]:
+    rubric = Rubric.from_yaml(rubric_path)
+    answers = generate_test_answers(rubric)
+    rubric_with_answers = RubricWithAnswers.from_rubric_and_answers(rubric, answers, teacher_force=teacher_force)
+    results = await rubric_with_answers.asolve(inputs)
+    req_to_metric_to_score, metric_to_mean_score = rubric_with_answers.run_metrics()
+    breakpoint()
 
 
 if __name__ == "__main__":
-    rubric, results = asyncio.run(run(TEST_RUBRIC_PATH, TEST_INPUTS))
+    teacher_force = True
+    # rubric, results = asyncio.run(run(TEST_RUBRIC_PATH, TEST_INPUTS))
     # rubric, results = asyncio.run(run(hb_rubric, hb_inputs))
-    answers = generate_test_answers(rubric)
-    rubric_with_answers = RubricWithAnswers.from_rubric_and_answers(rubric, answers)
-    rubric_with_answers.run_metrics()
+    asyncio.run(run(TEST_RUBRIC_PATH, TEST_INPUTS, teacher_force=teacher_force))
     breakpoint()
