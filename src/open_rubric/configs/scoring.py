@@ -24,7 +24,7 @@ from open_rubric.configs.base import BaseConfig
 class ScoringConfig(BaseConfig):
     name: str = ""
     subtype: str = ""
-    type: t.Literal["discrete", "continuous", "base"] = "base"
+    type: t.Literal["discrete", "continuous", "base", "free_text"] = "base"
     answer_type: t.Type[AnyAnswerConfig] = AnyAnswerConfig
 
     @classmethod
@@ -177,6 +177,39 @@ Do not include and other text; do not use "```json" or "```" anywhere in your re
         return FloatAnswerConfig(score=score_value)
 
 
+class FreeTextScoringConfig(ScoringConfig):
+    name: str = "free_text"
+    subtype: str = "free_text"
+    type: t.Literal["free_text"] = "free_text"
+    answer_type: t.Type[StringAnswerConfig] = StringAnswerConfig
+
+    def to_description(self) -> str:
+        return f"{self.subtype.replace('_', ' ')}"
+
+    def to_prompt(self) -> str:
+        return f"""
+Evaluate the information provided and write a free-text response answering the question.
+Format it as a valid JSON object with the following keys:
+- score: the free-text answer
+- reasoning: the reasoning for your answer
+Use the following format:
+
+{{
+    "score": <score>,
+    "reasoning": <reasoning>
+}}
+
+Do not include and other text; do not use "```json" or "```" anywhere in your response.
+""".strip()
+
+    def parse_response(self, response: str) -> StringAnswerConfig:
+        data = json.loads(response)
+        assert all(
+            k in data for k in ["score", "reasoning"]
+        ), f"Response {response} does not contain score and reasoning; got {data}"
+        return StringAnswerConfig(score=data["score"], reasoning=data["reasoning"])
+
+
 class UnitScalarScoringConfig(ContinuousScoringConfig):
     name: str = "unit_scalar"
     subtype: str = "unit_scalar"
@@ -196,9 +229,17 @@ subtype_to_continuous_scoring_configs = {
     "unit_scalar": UnitScalarScoringConfig,
 }
 continuous_scoring_configs = list(subtype_to_continuous_scoring_configs.values())
+
+subtype_to_free_text_scoring_configs = {
+    "free_text": FreeTextScoringConfig,
+}
+free_text_scoring_configs = list(subtype_to_free_text_scoring_configs.values())
+
+
 name_to_scoring_config = {
     **subtype_to_discrete_scoring_configs,
     **subtype_to_continuous_scoring_configs,
+    **subtype_to_free_text_scoring_configs,
 }
 preset_scoring_configs = [BinaryScoringConfig(), UnitScalarScoringConfig()]
 

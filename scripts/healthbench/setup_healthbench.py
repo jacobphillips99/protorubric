@@ -9,7 +9,6 @@ import json
 import time
 import typing as t
 
-import litellm
 import pandas as pd
 
 from open_rubric.models.model import MODEL
@@ -42,11 +41,15 @@ async def make_convo_with_response(row: pd.Series, sampler_model: str) -> list[d
     return convo_with_response
 
 
-async def run_completions(df: pd.DataFrame, sampler_model: str, update_in_place: bool = True) -> pd.DataFrame:
+async def run_completions(
+    df: pd.DataFrame, sampler_model: str, update_in_place: bool = True
+) -> pd.DataFrame:
     # run completions for each row in the dataframe -- rate limiting handled by llm_rate_limiter package inside MODEL
     print(f"Running {len(df)} completions")
     start_time = time.time()
-    convos = await asyncio.gather(*[make_convo_with_response(row, sampler_model=sampler_model) for _, row in df.iterrows()])
+    convos = await asyncio.gather(
+        *[make_convo_with_response(row, sampler_model=sampler_model) for _, row in df.iterrows()]
+    )
     end_time = time.time()
     print(f"Completed {len(convos)} completions in {round(end_time - start_time, 2)} seconds")
     if update_in_place:

@@ -11,9 +11,12 @@ from open_rubric.rubric import Rubric
 
 
 def generate_test_answers(rubric: Rubric) -> dict[str, t.Any]:
+    # random answer generator
     answers = {}
     for req in rubric.requirements.get_all_requirements():
-        answer_type = ANSWER_TYPE_TO_SCORE_TYPE_MAPPING[req.query.scoring_config.answer_type]
+        answer_type = ANSWER_TYPE_TO_SCORE_TYPE_MAPPING.get(
+            req.query.scoring_config.answer_type, str
+        )
         if answer_type == int:
             answers[req.name] = np.random.randint(-100, 100)
         elif answer_type == float:

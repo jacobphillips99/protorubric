@@ -31,9 +31,14 @@ class RequirementConfig(BaseConfig):
         ), f"Missing required kwargs [evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
 
         scoring_configs: ScoringConfigs = kwargs["scoring_configs"]
-        query = data["query"]
-        if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
-            query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
+        if "query" in data:
+            query = data["query"]
+            if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
+                query["scoring_config"] = scoring_configs.get_config_by_name(
+                    query["scoring_config"]
+                )
+        else:
+            query = "null"
 
         data["query"] = QueryConfig.from_data(query, **kwargs)
         if "query" in data and isinstance(data["query"], str):
@@ -55,7 +60,15 @@ class RequirementConfig(BaseConfig):
         self, dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None
     ) -> AggregatedQueryConfig:
         evaluated_queries = await self.evaluator.async_call(self.query, dependent_results)
-        aggregated_query = self.aggregator(evaluated_queries)
+        if "llm" in self.aggregator.name:
+            breakpoint()
+        aggregated_query = (
+            await self.aggregator.async_call(evaluated_queries)
+            if hasattr(self.aggregator, "async_call")
+            else self.aggregator(evaluated_queries)
+        )
+        if "llm" in self.name:
+            breakpoint()
         self._result = aggregated_query
         print(
             f"{self.name}: {self._result.score} over {self._result.n_votes} votes aggregated by {self.aggregator.name}"

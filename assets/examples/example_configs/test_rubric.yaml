@@ -6,6 +6,13 @@ scoring_configs:
     subtype: continuous
     min: 0
     max: 100
+  - free_text
+
+aggregator_configs:
+  - name: llm-summarizer
+    subtype: llm
+    model: gpt-4.1
+
 
 evaluator_configs:
   - name: my-sole-llm
@@ -39,7 +46,7 @@ requirements:
       - grammar
       - tone
       - helpfulness
-    evaluator: my-llm-committee
+    evaluator: my-sole-llm
     aggregator: mean
 
   - name: overall_quality
@@ -48,7 +55,7 @@ requirements:
       scoring_config: overall-quality-scoring-config
     dependency_names:
       - job_quality
-    evaluator: my-llm-committee
+    evaluator: my-sole-llm
     aggregator: median
 
   - name: helpfulness
@@ -56,3 +63,13 @@ requirements:
       instruction: Is the response helpful?
       scoring_config: unit_scalar
     evaluator: my-sole-llm
+
+  - name: summarizer
+    dependency_names:
+      - overall_quality
+      - job_quality
+      - grammar
+      - tone
+      - helpfulness
+    evaluator: pass-through
+    aggregator: llm-summarizer

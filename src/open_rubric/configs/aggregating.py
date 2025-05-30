@@ -12,10 +12,13 @@ from open_rubric.configs.base import BaseConfig
 from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
 from open_rubric.configs.scoring import (
     BinaryScoringConfig,
+    FreeTextScoringConfig,
     ScoringConfig,
     continuous_scoring_configs,
     discrete_scoring_configs,
 )
+from open_rubric.models.model import MODEL
+from open_rubric.models.model_types import ModelInput, ModelRequest
 
 
 class AggregatedQueryConfig(BaseConfig):
@@ -44,17 +47,17 @@ class BaseAggregatingConfig(BaseConfig):
     @classmethod
     def from_data(cls, data: dict, **kwargs: t.Any) -> "BaseAggregatingConfig":
         if isinstance(data, str):
-            if data in name_to_aggregating_config:
-                return name_to_aggregating_config[data](**kwargs)
+            if data in subtype_to_aggregating_config:
+                return subtype_to_aggregating_config[data](**kwargs)
             else:
                 raise ValueError(f"Cannot find aggregating config with name {data}")
         elif isinstance(data, dict):
-            agg_type = data.pop("subtype")
-            name = data.pop("name", agg_type)
-            if name in name_to_aggregating_config:
-                return name_to_aggregating_config[name](**{**data, "name": name})
+            subtype = data.pop("subtype")
+            name = data.pop("name", subtype)
+            if subtype in subtype_to_aggregating_config:
+                return subtype_to_aggregating_config[subtype](**{**data, "name": name})
             else:
-                raise ValueError(f"Cannot find aggregating config with name {name}")
+                raise ValueError(f"Cannot find aggregating config with subtype {subtype}")
         else:
             raise ValueError(f"Invalid data type: {type(data)}")
 
@@ -334,7 +337,57 @@ class WeightedAverageAggregatingConfig(WeightedAggregatingConfig):
         )
 
 
-name_to_aggregating_config = {
+class LLMAggregatingConfig(BaseAggregatingConfig):
+    model: str
+    name: str = "llm-aggregator"
+    subtype: str = "llm-aggregator"
+    aggregation_prompt: str = "Aggregate the provided results into a single result."
+    valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = (
+        None  # indicates all scoring configs are valid
+    )
+
+    async def async_call(
+        self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
+    ) -> AggregatedQueryConfig:
+        self.check_queries(queries)
+        scoring_config = FreeTextScoringConfig()
+        results = []
+        for query in queries:
+            if isinstance(query, AggregatedQueryConfig):
+                aqc = query
+                results.extend(
+                    [
+                        f"Score: {score}, Reasoning: {reasoning}"
+                        for score, reasoning in zip(aqc.get_scores(), aqc.get_reasonings())
+                    ]
+                )
+            else:
+                results.append(f"Score: {query.score}, Reasoning: {query.reasoning}")
+        results_str = "\n".join(results)
+        prompt = f"""
+{self.aggregation_prompt}
+{results_str}
+{scoring_config.to_prompt()}
+""".strip()
+        # TODO: must get recursive with the queries
+        breakpoint()
+        req = ModelRequest(
+            model=self.model,
+            model_input=ModelInput(
+                prompt=prompt,
+                response_format=type(scoring_config),
+            ),
+        )
+        response = await MODEL.agenerate(req)
+        answer = scoring_config.parse_response(response.texts[0])
+        return AggregatedQueryConfig(
+            queries=queries,
+            score=answer.score,
+            confidence=None,
+        )
+
+
+subtype_to_aggregating_config = {
     "null": NullAggregatingConfig,
     "mean": MeanAggregatingConfig,
     "median": MedianAggregatingConfig,
@@ -345,6 +398,7 @@ name_to_aggregating_config = {
     "min": MinAggregatingConfig,
     "weighted": WeightedAggregatingConfig,
     "weighted_sum": WeightedSumAggregatingConfig,
+    "llm": LLMAggregatingConfig,
 }
 
 preset_aggregator_configs = [

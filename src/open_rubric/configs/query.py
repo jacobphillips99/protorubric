@@ -15,7 +15,13 @@ class QueryConfig(BaseConfig):
     _answer: t.Optional[AnswerConfig] = None
 
     @classmethod
-    def from_data(cls, data: dict, **kwargs: t.Any) -> "QueryConfig":
+    def from_data(cls, data: dict | str, **kwargs: t.Any) -> "QueryConfig":
+        if isinstance(data, str):
+            if data == "null":
+                return NULL_QUERY_CONFIG
+            else:
+                raise ValueError(f"Invalid query config: {data}")
+
         if "scoring_config" in data and isinstance(data["scoring_config"], str):
             data["scoring_config"] = kwargs["scoring_configs"].get_config_by_name(
                 data["scoring_config"]

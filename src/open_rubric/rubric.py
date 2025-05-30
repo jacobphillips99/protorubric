@@ -52,7 +52,9 @@ class Rubric(BaseConfig):
             [self.requirements.get_requirement_by_name(req) for req in level]
             for level in level_sorted_requirement_names
         ]
-        print(f"\n\nFound {len(level_sorted_reqs)} levels")
+        print(f"\n\nFound {len(level_sorted_reqs)} levels:")
+        for i, level in enumerate(level_sorted_reqs):
+            print(f"Level {i + 1}: [{', '.join([req.name for req in level])}]")
         return level_sorted_reqs
 
     def update_state(

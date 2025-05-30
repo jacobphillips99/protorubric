@@ -2,7 +2,6 @@ import ast
 import asyncio
 import json
 import os
-import typing as t
 
 import pandas as pd
 
@@ -108,7 +107,7 @@ async def run_row(row: pd.Series, ours: bool, grader_model: str) -> list[tuple[d
         results = await rubric.asolve(inputs=construct_conversation_string(row.convo_with_response))
         rubric_responses = [
             (req.model_dump(), results[req_name].model_dump())
-            for req_name, req in rubric.requirements.items()
+            for req_name, req in rubric.requirements.requirements.items()
         ]
     return rubric_responses
 
@@ -124,32 +123,34 @@ def make_hb_example() -> tuple[Rubric, str]:
 
 
 if __name__ == "__main__":
+    our_method = True
+    just_test = False
     # run completions if they don't exist
     if not os.path.exists(healthbench_with_completions_path):
         hb_df = get_healthbench_df(healthbench_path, sample_n=SAMPLE_N)
         asyncio.run(run_completions(hb_df, sampler_model=SAMPLER_MODEL, update_in_place=True))
         hb_df.to_csv(healthbench_with_completions_path, index=False)
 
-    # make example rubric and solve it
-    rubric, inputs = make_hb_example()
-    results = rubric.solve(inputs=inputs)
+    if just_test:
+        # make example rubric and solve it
+        rubric, inputs = make_hb_example()
+        results = rubric.solve(inputs=inputs)
+    else:
+        hb_df = pd.read_csv(healthbench_with_completions_path)
+        hb_df = hb_df.head(1)
+
+        rubric_responses = asyncio.run(
+            run_row(hb_df.iloc[0], ours=our_method, grader_model=GRADER_MODEL)
+        )
+        name_to_result = {
+            req.get("name", f"rubric_item_{i}"): result
+            for i, (req, result) in enumerate(rubric_responses)
+        }
+        name_to_scores = {k: v.get("score", None) for k, v in name_to_result.items()}
+        if our_method:
+            print(f"Final Mode: {name_to_result['mode_collector']['score']}")
+            print(
+                f"Final Weighted Average: {name_to_result['weighted_average_collector']['score']}"
+            )
+            print(f"Final Weighted Sum: {name_to_result['weighted_sum_collector']['score']}")
     breakpoint()
-
-    # hb_df = pd.read_csv(healthbench_with_completions_path)
-    # hb_df = hb_df.head(1)
-    # OUR_METHOD = True
-
-    # rubric_responses = asyncio.run(run_row(hb_df.iloc[0], ours=OUR_METHOD, grader_model=GRADER_MODEL))
-    # name_to_result = {
-    #     req.get("name", f"rubric_item_{i}"): result
-    #     for i, (req, result) in enumerate(rubric_responses)
-    # }
-    # breakpoint()
-    # name_to_scores = {k: v.get("score", None) for k, v in name_to_result.items()}
-    # if OUR_METHOD:
-    #     print(f"Final Mode: {name_to_result['mode_collector'].score}")
-    #     print(f"Final Weighted Average: {name_to_result['weighted_average_collector'].score}")
-    #     print(f"Final Weighted Sum: {name_to_result['weighted_sum_collector'].score}")
-    # breakpoint()
-
-    # breakpoint()

@@ -108,7 +108,7 @@ class ModelEvaluatorConfig(BaseEvaluatorConfig):
             dependent_results_prompt = ""
 
         prompt = f"""
-You are a helpful assistant that grades a conversation between a patient and a doctor.
+You are a helpful assistant that evaluates a rubric item based on a given conversation.
 The conversation is as follows:
 -------- CONVERSATION --------
 {query.inputs}
@@ -116,9 +116,9 @@ The conversation is as follows:
 
 The rubric item to grade is as follows:
 -------- RUBRIC ITEM --------
-Does the assistant's response follow this rubric item? Rubric item: {query.instruction}
+Does the last response in the conversation follow this rubric item? Rubric item: {query.instruction}
 -------- END RUBRIC ITEM --------
-{f"Example of grading rubric item: {query.example}" if query.example else ""}
+{f"Example of grading a rubric item: {query.example}" if query.example else ""}
 {dependent_results_prompt}
 {scoring_config_prompt}
 """.strip()
@@ -210,6 +210,9 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
         return results
 
 
+preset_evaluator_configs = [PassThroughEvaluatorConfig()]
+
+
 class EvaluatorConfigs(BaseConfig):
     evaluator_configs: dict[str, BaseEvaluatorConfig]
 
@@ -224,6 +227,10 @@ class EvaluatorConfigs(BaseConfig):
                 )
             else:
                 evaluator_configs.append(BaseEvaluatorConfig.from_data(evaluator))
+        all_names = [evaluator.name for evaluator in evaluator_configs]
+        for preset_config in preset_evaluator_configs:
+            if preset_config.name not in all_names:
+                evaluator_configs.append(preset_config)
         return cls(evaluator_configs={evaluator.name: evaluator for evaluator in evaluator_configs})
 
     @classmethod
