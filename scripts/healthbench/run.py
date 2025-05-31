@@ -10,10 +10,11 @@ from open_rubric.models.model_types import ModelInput, ModelRequest
 from open_rubric.rubric import Rubric
 
 from .healthbench_to_open_rubric_utils import make_rubric_from_hb_dicts
-from .setup_healthbench import get_healthbench_df, run_completions
+from .setup_healthbench import check_path_or_download, get_limited_df, run_completions
 
-healthbench_path = "assets/examples/healthbench/healthbench.jsonl"
-healthbench_with_completions_path = (
+HEALTHBENCH_REMOTE_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl"
+HEALTHBENCH_LOCAL_PATH = "assets/examples/healthbench/healthbench.jsonl"
+HEALTHBENCH_WITH_COMPLETIONS_LOCAL_PATH = (
     "assets/examples/healthbench/healthbench_with_completions_df.csv"
 )
 
@@ -35,12 +36,7 @@ def construct_conversation_string(convo: list[dict] | str) -> str:
     if not isinstance(processed_convo, list):
         raise ValueError(f"Conversation is not a list: {processed_convo}")
 
-    convo_str = "\n\n".join(
-        [
-            f"{m.get('role', 'UnknownRole')}: {m.get('content', 'NoContent')}"
-            for m in processed_convo
-        ]
-    )
+    convo_str = "\n\n".join([f"{m['role']}: {m['content']}" for m in processed_convo])
     return convo_str
 
 
@@ -80,7 +76,7 @@ async def grade_one_rubric_item(convo_str: str, rubric_item: dict) -> dict:
         response_dict: dict[str, str] = json.loads(response.texts[0])
     except Exception as e:
         print(f"{e}, {response.texts[0]}")
-        breakpoint()
+        # breakpoint()
     return response_dict
 
 
@@ -94,13 +90,13 @@ async def run_row(row: pd.Series, ours: bool, grader_model: str) -> list[tuple[d
     print(f"running {len(rubric_dicts)} rubric items")
     if not ours:
         # run the simple healthbench method
-        results = await asyncio.gather(
+        hb_results = await asyncio.gather(
             *[
                 grade_one_rubric_item(construct_conversation_string(row.convo_with_response), item)
                 for item in rubric_dicts
             ]
         )
-        rubric_responses = [(rubric, result) for rubric, result in zip(rubric_dicts, results)]
+        return [(rubric, result) for rubric, result in zip(rubric_dicts, hb_results)]
     else:
         # construct our rubric and solve it
         rubric = make_rubric_from_hb_dicts(rubric_dicts, grader_model=grader_model)
@@ -109,12 +105,12 @@ async def run_row(row: pd.Series, ours: bool, grader_model: str) -> list[tuple[d
             (req.model_dump(), results[req_name].model_dump())
             for req_name, req in rubric.requirements.requirements.items()
         ]
-    return rubric_responses
+        return rubric_responses
 
 
 # make example rubric from hb_df
 def make_hb_example() -> tuple[Rubric, str]:
-    hb_df = pd.read_csv(healthbench_with_completions_path)
+    hb_df = pd.read_csv(HEALTHBENCH_WITH_COMPLETIONS_LOCAL_PATH)
     hb_df = hb_df.head(1)
     rubric_dicts = get_rubric_items(hb_df.iloc[0])
     rubric = make_rubric_from_hb_dicts(rubric_dicts, grader_model=GRADER_MODEL)
@@ -125,18 +121,27 @@ def make_hb_example() -> tuple[Rubric, str]:
 if __name__ == "__main__":
     our_method = True
     just_test = False
+
+    check_path_or_download(HEALTHBENCH_REMOTE_PATH, HEALTHBENCH_LOCAL_PATH)
+
     # run completions if they don't exist
-    if not os.path.exists(healthbench_with_completions_path):
-        hb_df = get_healthbench_df(healthbench_path, sample_n=SAMPLE_N)
+    if not os.path.exists(HEALTHBENCH_WITH_COMPLETIONS_LOCAL_PATH):
+        hb_df = get_limited_df(HEALTHBENCH_LOCAL_PATH, sample_n=SAMPLE_N)
         asyncio.run(run_completions(hb_df, sampler_model=SAMPLER_MODEL, update_in_place=True))
-        hb_df.to_csv(healthbench_with_completions_path, index=False)
+        hb_df.to_csv(HEALTHBENCH_WITH_COMPLETIONS_LOCAL_PATH, index=False)
+    else:
+        hb_df = pd.read_csv(HEALTHBENCH_WITH_COMPLETIONS_LOCAL_PATH)
+
+    print(f"Rubric lengths: {hb_df.rubrics.apply(lambda x: len(x)).describe()}")
+    points = hb_df.rubrics.apply(lambda x: [y["points"] for y in x]).explode()
+    print(f"Points distribution: {points.describe()}")
 
     if just_test:
         # make example rubric and solve it
         rubric, inputs = make_hb_example()
         results = rubric.solve(inputs=inputs)
     else:
-        hb_df = pd.read_csv(healthbench_with_completions_path)
+        hb_df = pd.read_csv(HEALTHBENCH_WITH_COMPLETIONS_LOCAL_PATH)
         hb_df = hb_df.head(1)
 
         rubric_responses = asyncio.run(
@@ -153,4 +158,4 @@ if __name__ == "__main__":
                 f"Final Weighted Average: {name_to_result['weighted_average_collector']['score']}"
             )
             print(f"Final Weighted Sum: {name_to_result['weighted_sum_collector']['score']}")
-    breakpoint()
+    # breakpoint()

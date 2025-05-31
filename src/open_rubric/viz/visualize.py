@@ -10,8 +10,6 @@ import plotly.graph_objects as go
 from open_rubric.rubric import Rubric
 from open_rubric.utils.dag import topological_levels
 
-VIZ_OUTPUT_DIR = Path("assets/viz_outputs/")
-
 
 class RubricVisualizer:
     """Comprehensive visualization toolkit for Open Rubric system."""
@@ -54,6 +52,7 @@ class RubricVisualizer:
             confidence = None
 
             if has_result:
+                assert req._result is not None
                 score = req._result.score
                 confidence = req._result.confidence
             elif query_answered:
@@ -194,7 +193,7 @@ class RubricVisualizer:
 
             for j, node in enumerate(level):
                 if n_nodes == 1:
-                    x_pos = 0
+                    x_pos = 0.0
                 else:
                     x_pos = (j - (n_nodes - 1) / 2) * (level_width / max(n_nodes - 1, 1))
                 pos[node] = (x_pos, y_pos)
@@ -211,7 +210,7 @@ class RubricVisualizer:
         ]
 
         # Draw execution level backgrounds
-        for i, level in enumerate(self.execution_levels):
+        for i, _ in enumerate(self.execution_levels):
             y_pos = (len(self.execution_levels) - i - 1) * level_height
             rect = plt.Rectangle(
                 (-level_width / 2 - 0.7, y_pos - 0.6),
@@ -337,7 +336,7 @@ class RubricVisualizer:
         )
 
         # Define colors for different evaluator types
-        evaluator_types = list(set(req.evaluator.type for req in self.requirements))
+        # evaluator_types = list(set(req.evaluator.type for req in self.requirements))
         evaluator_colors = {"llm": "#FFE5E5", "llm-ensemble": "#E5F3FF", "pass-through": "#F0F0F0"}
 
         # Create subgraphs for each execution level
@@ -367,7 +366,8 @@ class RubricVisualizer:
             dot.render(save_path, format="png", cleanup=True)
             print(f"Graphviz diagram saved to {save_path}.png")
 
-        return dot.source
+        src: str = dot.source
+        return src
 
     def create_plotly_interactive_graph(self, save_path: t.Optional[str] = None) -> go.Figure:
         """Create clean interactive Plotly graph with component reference panel."""
@@ -386,7 +386,7 @@ class RubricVisualizer:
 
             for j, node in enumerate(level):
                 if n_nodes == 1:
-                    x_pos = 0
+                    x_pos = 0.0
                 else:
                     x_pos = (j - (n_nodes - 1) / 2) * (level_width / max(n_nodes - 1, 1))
                 pos[node] = (x_pos, y_pos)

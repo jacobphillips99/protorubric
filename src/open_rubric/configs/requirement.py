@@ -60,15 +60,12 @@ class RequirementConfig(BaseConfig):
         self, dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None
     ) -> AggregatedQueryConfig:
         evaluated_queries = await self.evaluator.async_call(self.query, dependent_results)
-        if "llm" in self.aggregator.name:
-            breakpoint()
-        aggregated_query = (
+        # TODO: just make all aggregators async??
+        aggregated_query: AggregatedQueryConfig = (
             await self.aggregator.async_call(evaluated_queries)
             if hasattr(self.aggregator, "async_call")
             else self.aggregator(evaluated_queries)
         )
-        if "llm" in self.name:
-            breakpoint()
         self._result = aggregated_query
         print(
             f"{self.name}: {self._result.score} over {self._result.n_votes} votes aggregated by {self.aggregator.name}"

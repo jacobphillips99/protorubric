@@ -6,25 +6,35 @@ Includes setup for running completions and converting the healthbench dataset to
 
 import asyncio
 import json
+import os
 import time
 import typing as t
 
 import pandas as pd
+import requests
 
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelRequest
 
 
-def get_healthbench_df(path: str, sample_n: t.Optional[int] = None) -> pd.DataFrame:
+def check_path_or_download(remote_path: str, local_path: str, overwrite: bool = False) -> str:
+    if not os.path.exists(local_path) or overwrite:
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        # download the file
+        print(f"Downloading {remote_path} to {local_path}...")
+        response = requests.get(remote_path)
+        with open(local_path, "wb") as f:
+            f.write(response.content)
+    return local_path
+
+
+def get_limited_df(path: str, sample_n: t.Optional[int] = None) -> pd.DataFrame:
     # load the healthbench jsonl file and convert to a pandas dataframe
     with open(path, "r") as f:
         lines = f if sample_n is None else (next(f) for _ in range(sample_n))
         hb_samples = [json.loads(line) for line in lines]
 
     hb_df = pd.DataFrame(hb_samples)
-    print(f"Rubric lengths: {hb_df.rubrics.apply(lambda x: len(x)).describe()}")
-    points = hb_df.rubrics.apply(lambda x: [y["points"] for y in x]).explode()
-    print(f"Points distribution: {points.describe()}")
     return hb_df
 
 

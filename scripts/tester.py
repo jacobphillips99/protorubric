@@ -31,8 +31,7 @@ async def run(
     inputs: t.Any,
 ) -> None:
     rubric = Rubric.from_yaml(rubric_path)
-    outputs = await rubric.asolve(inputs)
-    # breakpoint()
+    # outputs = await rubric.asolve(inputs)
     answers = generate_test_answers(rubric)
 
     rubric_with_answers_tf = RubricWithAnswers.from_rubric_and_answers(

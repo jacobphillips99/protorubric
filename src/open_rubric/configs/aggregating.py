@@ -20,12 +20,15 @@ from open_rubric.configs.scoring import (
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelRequest
 
+ReasoningsType = str | None | list["ReasoningsType"]
+
 
 class AggregatedQueryConfig(BaseConfig):
     queries: list[
         t.Union[QueryConfig, "AggregatedQueryConfig"]
     ]  # self-reference enables recursive aggregation
     score: t.Any
+    aggregated_reasoning: t.Optional[str] = None  # todo, recursive
     confidence: t.Optional[t.Any] = None
 
     @property
@@ -35,8 +38,11 @@ class AggregatedQueryConfig(BaseConfig):
     def get_scores(self) -> list[t.Any]:
         return [query.score for query in self.queries]
 
-    def get_reasonings(self) -> list[str | None]:
-        return [query.reasoning for query in self.queries]
+    def get_reasonings(self) -> list[ReasoningsType]:
+        return [
+            query.reasoning if isinstance(query, QueryConfig) else query.get_reasonings()
+            for query in self.queries
+        ]
 
 
 class BaseAggregatingConfig(BaseConfig):
@@ -137,6 +143,7 @@ class MeanAggregatingConfig(BaseAggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
+            aggregated_reasoning=f"Mean over {scores}",
         )
 
 
@@ -163,6 +170,7 @@ class MedianAggregatingConfig(BaseAggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
+            aggregated_reasoning=f"Median over {scores}",
         )
 
 
@@ -187,6 +195,7 @@ class ModeAggregatingConfig(BaseAggregatingConfig):
             queries=queries,
             score=score,
             confidence=conf,
+            aggregated_reasoning=f"Mode over {scores}",
         )
 
 
@@ -199,11 +208,13 @@ class AllAggregatingConfig(BaseAggregatingConfig):
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = all(self.get_scores(queries))
+        scores = self.get_scores(queries)
+        score = all(scores)
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
             confidence=1 if score else 0,
+            aggregated_reasoning=f"All over {scores}",
         )
 
 
@@ -216,11 +227,13 @@ class AnyAggregatingConfig(BaseAggregatingConfig):
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = any(self.get_scores(queries))
+        scores = self.get_scores(queries)
+        score = any(scores)
         return AggregatedQueryConfig(
             queries=queries,
             score=score,
             confidence=1 if score else 0,
+            aggregated_reasoning=f"Any over {scores}",
         )
 
 
@@ -233,11 +246,10 @@ class MaxAggregatingConfig(BaseAggregatingConfig):
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = max(self.get_scores(queries))
+        scores = self.get_scores(queries)
+        score = max(scores)
         return AggregatedQueryConfig(
-            queries=queries,
-            score=score,
-            confidence=None,
+            queries=queries, score=score, confidence=None, aggregated_reasoning=f"Max over {scores}"
         )
 
 
@@ -250,11 +262,10 @@ class MinAggregatingConfig(BaseAggregatingConfig):
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
-        score = min(self.get_scores(queries))
+        scores = self.get_scores(queries)
+        score = min(scores)
         return AggregatedQueryConfig(
-            queries=queries,
-            score=score,
-            confidence=None,
+            queries=queries, score=score, confidence=None, aggregated_reasoning=f"Min over {scores}"
         )
 
 
@@ -302,6 +313,7 @@ class WeightedSumAggregatingConfig(WeightedAggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
+            aggregated_reasoning=f"Weighted sum over {scores} with weights {weights}",
         )
 
 
@@ -334,6 +346,7 @@ class WeightedAverageAggregatingConfig(WeightedAggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
+            aggregated_reasoning=f"Weighted average over {scores} with weights {weights}",
         )
 
 
@@ -370,7 +383,6 @@ class LLMAggregatingConfig(BaseAggregatingConfig):
 {scoring_config.to_prompt()}
 """.strip()
         # TODO: must get recursive with the queries
-        breakpoint()
         req = ModelRequest(
             model=self.model,
             model_input=ModelInput(
@@ -383,6 +395,7 @@ class LLMAggregatingConfig(BaseAggregatingConfig):
         return AggregatedQueryConfig(
             queries=queries,
             score=answer.score,
+            aggregated_reasoning=answer.reasoning,
             confidence=None,
         )
 

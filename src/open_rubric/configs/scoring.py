@@ -187,7 +187,7 @@ class FreeTextScoringConfig(ScoringConfig):
         return f"{self.subtype.replace('_', ' ')}"
 
     def to_prompt(self) -> str:
-        return f"""
+        return """
 Evaluate the information provided and write a free-text response answering the question.
 Format it as a valid JSON object with the following keys:
 - score: the free-text answer
@@ -200,6 +200,8 @@ Use the following format:
 }}
 
 Do not include and other text; do not use "```json" or "```" anywhere in your response.
+
+Make sure the score is a string.
 """.strip()
 
     def parse_response(self, response: str) -> StringAnswerConfig:

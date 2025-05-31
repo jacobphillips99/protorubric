@@ -13,6 +13,27 @@ from open_rubric.configs.scoring import name_to_scoring_config
 from open_rubric.rubric import Rubric
 
 
+def hb_rubric_to_requirement(rubric_item: dict, name: str, grader_model: str) -> RequirementConfig:
+    scoring_config = name_to_scoring_config["binary"]()
+    evaluator_config = ModelEvaluatorConfig(
+        model=grader_model, provider=litellm.get_llm_provider(grader_model)[1]
+    )
+    aggregator_config = NullAggregatingConfig()
+    query_config = QueryConfig(
+        instruction=rubric_item["criterion"],
+        inputs=None,
+        example=None,
+        scoring_config=scoring_config,
+    )
+    requirement_config = RequirementConfig(
+        name=name,
+        query=query_config,
+        evaluator=evaluator_config,
+        aggregator=aggregator_config,
+    )
+    return requirement_config
+
+
 def make_rubric_from_hb_dicts(rubric_dicts: list[dict], grader_model: str) -> Rubric:
     requirement_configs = dict()
     weights = []
@@ -60,24 +81,3 @@ def make_rubric_from_hb_dicts(rubric_dicts: list[dict], grader_model: str) -> Ru
     requirements = Requirements(requirements=requirement_configs)
     rubric = Rubric(requirements=requirements)
     return rubric
-
-
-def hb_rubric_to_requirement(rubric_item: dict, name: str, grader_model: str) -> RequirementConfig:
-    scoring_config = name_to_scoring_config["binary"]()
-    evaluator_config = ModelEvaluatorConfig(
-        model=grader_model, provider=litellm.get_llm_provider(grader_model)[1]
-    )
-    aggregator_config = NullAggregatingConfig()
-    query_config = QueryConfig(
-        instruction=rubric_item["criterion"],
-        inputs=None,
-        example=None,
-        scoring_config=scoring_config,
-    )
-    requirement_config = RequirementConfig(
-        name=name,
-        query=query_config,
-        evaluator=evaluator_config,
-        aggregator=aggregator_config,
-    )
-    return requirement_config
