@@ -13,7 +13,6 @@ aggregator_configs:
     subtype: llm
     model: gpt-4.1
 
-
 evaluator_configs:
   - name: my-sole-llm
     type: llm

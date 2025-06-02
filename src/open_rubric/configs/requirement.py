@@ -12,7 +12,7 @@ from open_rubric.configs.aggregating import (
 from open_rubric.configs.base import BaseConfig
 from open_rubric.configs.evaluating import BaseEvaluatorConfig, EvaluatorConfigs
 from open_rubric.configs.query import QueryConfig
-from open_rubric.configs.scoring import ScoringConfig, ScoringConfigs
+from open_rubric.configs.scoring import ScoringConfig, ScoringConfigCollector
 
 
 class RequirementConfig(BaseConfig):
@@ -29,8 +29,8 @@ class RequirementConfig(BaseConfig):
         assert all(
             k in kwargs for k in ["evaluator_configs", "aggregator_configs"]
         ), f"Missing required kwargs [evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
-
-        scoring_configs: ScoringConfigs = kwargs["scoring_configs"]
+        # todo remove me
+        scoring_configs: ScoringConfigCollector = kwargs["scoring_configs"]
         if "query" in data:
             query = data["query"]
             if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):

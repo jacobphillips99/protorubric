@@ -1,6 +1,6 @@
 # open-rubric
 
-Open-source tools for autograding LLM answers with rubrics.
+Open-source tools for autograding rubrics with LLMs.
 
 ## Features
 - Define and evaluate rubrics for LLM-generated responses using YAML configurations.
@@ -16,8 +16,6 @@ Requirements: Python 3.10 or higher.
 
 1. Install the package and core dependencies:
    ```bash
-   pip install open-rubric
-   # or from source:
    git clone <repo_url>
    cd open-rubric
    pip install -r requirements.txt
@@ -37,8 +35,8 @@ Requirements: Python 3.10 or higher.
 
 ### Define a rubric
 
-Create a YAML file (e.g., `my_rubric.yaml`) describing scoring, evaluators, aggregators, and requirements.
-Example in `assets/examples/example_configs/test_rubric.yaml`.
+Create a rubric file, either in YAML or code, describing scoring, evaluators, aggregators, and requirements.
+Example in `assets/examples/example_configs/test_rubric.yaml` or `assets/examples/healthbench/healthbench_to_open_rubric_utils.py`
 
 ### Evaluate a rubric
 
@@ -81,7 +79,7 @@ See `scripts/test_viz.py` for a runnable example.
 
 ## Evaluation with Ground Truth
 
-Use `RubricWithAnswers` to compare rubric evaluation against known answers:
+Use `RubricWithAnswers` to compare rubric evaluation against known answers, or even invoke `teacher_force=True` to force the rubric to use the known answers when considering dependent requirements:
 
 ```python
 from open_rubric.eval.rubric_with_answers import RubricWithAnswers, generate_test_answers

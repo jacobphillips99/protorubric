@@ -8,6 +8,7 @@ See assets/examples/example_configs/test_rubric.yaml for an example of a top-lev
 
 import json
 import typing as t
+from typing import ClassVar
 
 import yaml
 from pydantic import model_validator
@@ -18,7 +19,7 @@ from open_rubric.configs.answers import (
     FloatAnswerConfig,
     StringAnswerConfig,
 )
-from open_rubric.configs.base import BaseConfig
+from open_rubric.configs.base import BaseConfig, BaseConfigCollector
 
 
 class ScoringConfig(BaseConfig):
@@ -243,47 +244,10 @@ name_to_scoring_config = {
     **subtype_to_continuous_scoring_configs,
     **subtype_to_free_text_scoring_configs,
 }
-preset_scoring_configs = [BinaryScoringConfig(), UnitScalarScoringConfig()]
+PRESET_SCORING_CONFIGS = [BinaryScoringConfig(), UnitScalarScoringConfig()]
 
 
-class ScoringConfigs(BaseConfig):
-    scoring_configs: dict[str, ScoringConfig]
-
-    @classmethod
-    def from_data(cls, data: list[dict | str] | dict, **kwargs: t.Any) -> "ScoringConfigs":
-        if isinstance(data, dict):
-            if "scoring_configs" in data:
-                list_data: list[dict | str] = data["scoring_configs"]
-        else:
-            list_data = data
-        configs: list[ScoringConfig] = []
-        for item in list_data:
-            if isinstance(item, str) and item.endswith(
-                ".yaml"
-            ):  # recursive loading of scoring configs
-                configs.extend(ScoringConfigs.from_yaml(item, **kwargs).scoring_configs.values())
-            else:
-                configs.append(ScoringConfig.from_data(item, **kwargs))
-        all_names = [config.name for config in configs]
-        for present_config in preset_scoring_configs:
-            if present_config.name not in all_names:
-                configs.append(present_config)
-        # todo: check for duplicate names
-        return cls(scoring_configs={config.name: config for config in configs})
-
-    @classmethod
-    def from_yaml(cls, path: str, **kwargs: t.Any) -> "ScoringConfigs":
-        with open(path, "r") as f:
-            data = yaml.safe_load(f)
-        if isinstance(data, dict):
-            data = data["scoring_configs"]
-        return cls.from_data(data, **kwargs)
-
-    def get_config_by_name(self, name: str) -> ScoringConfig:
-        return self.scoring_configs[name]
-
-    def get_configs_by_subtype(self, subtype: str) -> list[ScoringConfig]:
-        return [config for config in self.scoring_configs.values() if config.subtype == subtype]
-
-    def get_configs_by_type(self, type: t.Literal["discrete", "continuous"]) -> list[ScoringConfig]:
-        return [config for config in self.scoring_configs.values() if config.type == type]
+class ScoringConfigCollector(BaseConfigCollector[ScoringConfig]):
+    BaseConfigType: ClassVar[type[ScoringConfig]] = ScoringConfig
+    data_key: ClassVar[str] = "scoring_configs"
+    preset_configs: ClassVar[list[ScoringConfig]] = PRESET_SCORING_CONFIGS
