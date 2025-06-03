@@ -75,15 +75,14 @@ class RubricWithAnswers(Rubric):
         # TODO: currently adding a null query config because we don't have a reasoning / scoring config for the answer. need to handle prompting later w/ models?
         """
         for req_name, agg_query_config in level_results.items():
-            # TODO: should probably use the original AQC here somehow?
             if self.teacher_force and req_name in self.answers:
                 found_prediction = agg_query_config.score
-                found_answer = self.answers[req_name]
+                found_answer = self.answers[req_name] # todo - would be nice to load answers as AQCs / create teacher forcing answer AQCs
                 # if correct, don't teacher force; if wrong, teacher force
                 if found_prediction == found_answer:
                     state[req_name] = agg_query_config
                 else:
-                    # note: AQC may be composed of AQCs! use recursive search
+                    # note: AQC may be composed of AQCs! use recursive search to find example query config
                     found_query_config = agg_query_config.get_example_query_config()
                     assert found_query_config is not None, "No query config found in AQC!"
                     scoring_config = found_query_config.scoring_config
@@ -94,7 +93,9 @@ class RubricWithAnswers(Rubric):
                         score=self.answers[req_name],
                         confidence=None,
                     )
-                    print(f"Teacher forced {req_name} to {self.answers[req_name]} from {found_prediction}")
+                    print(
+                        f"Teacher forced {req_name} to {self.answers[req_name]} from {found_prediction}"
+                    )
             else:
                 state[req_name] = agg_query_config
         return state

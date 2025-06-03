@@ -44,7 +44,7 @@ class AggregatedQueryConfig(BaseConfig):
             query.reasoning if isinstance(query, QueryConfig) else query.get_reasonings()
             for query in self.queries
         ]
-    
+
     def get_example_query_config(self) -> t.Optional[QueryConfig]:
         # recursively find a query config from the AQC
         for query in self.queries:
