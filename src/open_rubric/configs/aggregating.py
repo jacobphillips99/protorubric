@@ -4,11 +4,11 @@ Returns an AggregatedQueryConfig object that contains the queries, the score, an
 """
 
 import typing as t
-
+from typing import ClassVar
 import numpy as np
 import yaml
 
-from open_rubric.configs.base import BaseConfig
+from open_rubric.configs.base import BaseConfig, BaseConfigCollector
 from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
 from open_rubric.configs.scoring import (
     BinaryScoringConfig,
@@ -45,13 +45,13 @@ class AggregatedQueryConfig(BaseConfig):
         ]
 
 
-class BaseAggregatingConfig(BaseConfig):
+class AggregatingConfig(BaseConfig):
     name: str
     subtype: str
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
 
     @classmethod
-    def from_data(cls, data: dict, **kwargs: t.Any) -> "BaseAggregatingConfig":
+    def from_data(cls, data: dict, **kwargs: t.Any) -> "AggregatingConfig":
         if isinstance(data, str):
             if data in subtype_to_aggregating_config:
                 return subtype_to_aggregating_config[data](**kwargs)
@@ -68,7 +68,7 @@ class BaseAggregatingConfig(BaseConfig):
             raise ValueError(f"Invalid data type: {type(data)}")
 
     @classmethod
-    def from_yaml(cls, path: str, **kwargs: t.Any) -> "BaseAggregatingConfig":
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "AggregatingConfig":
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         return cls.from_data(data, **kwargs)
@@ -100,7 +100,7 @@ class BaseAggregatingConfig(BaseConfig):
         raise NotImplementedError(f"Aggregating config {self.name} must implement __call__")
 
 
-class NullAggregatingConfig(BaseAggregatingConfig):
+class NullAggregatingConfig(AggregatingConfig):
     """
     Placeholder for no aggregation, just returns the first query as an "aggregated" query
     """
@@ -120,7 +120,7 @@ class NullAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class MeanAggregatingConfig(BaseAggregatingConfig):
+class MeanAggregatingConfig(AggregatingConfig):
     name: str = "mean"
     subtype: str = "mean"
     valid_scoring_configs: list[type[ScoringConfig]] = (
@@ -147,7 +147,7 @@ class MeanAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class MedianAggregatingConfig(BaseAggregatingConfig):
+class MedianAggregatingConfig(AggregatingConfig):
     name: str = "median"
     subtype: str = "median"
     valid_scoring_configs: list[type[ScoringConfig]] = (
@@ -174,7 +174,7 @@ class MedianAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class ModeAggregatingConfig(BaseAggregatingConfig):
+class ModeAggregatingConfig(AggregatingConfig):
     name: str = "mode"
     subtype: str = "mode"
     valid_scoring_configs: list[type[ScoringConfig]] = discrete_scoring_configs
@@ -199,7 +199,7 @@ class ModeAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class AllAggregatingConfig(BaseAggregatingConfig):
+class AllAggregatingConfig(AggregatingConfig):
     name: str = "all"
     subtype: str = "all"
     valid_scoring_configs: list[type[ScoringConfig]] = [BinaryScoringConfig]
@@ -218,7 +218,7 @@ class AllAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class AnyAggregatingConfig(BaseAggregatingConfig):
+class AnyAggregatingConfig(AggregatingConfig):
     name: str = "any"
     subtype: str = "any"
     valid_scoring_configs: list[type[ScoringConfig]] = [BinaryScoringConfig]
@@ -237,7 +237,7 @@ class AnyAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class MaxAggregatingConfig(BaseAggregatingConfig):
+class MaxAggregatingConfig(AggregatingConfig):
     name: str = "max"
     subtype: str = "max"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
@@ -253,7 +253,7 @@ class MaxAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class MinAggregatingConfig(BaseAggregatingConfig):
+class MinAggregatingConfig(AggregatingConfig):
     name: str = "min"
     subtype: str = "min"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
@@ -269,7 +269,7 @@ class MinAggregatingConfig(BaseAggregatingConfig):
         )
 
 
-class WeightedAggregatingConfig(BaseAggregatingConfig):
+class WeightedAggregatingConfig(AggregatingConfig):
     name: str = "weighted"
     subtype: str = "weighted"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
@@ -350,7 +350,7 @@ class WeightedAverageAggregatingConfig(WeightedAggregatingConfig):
         )
 
 
-class LLMAggregatingConfig(BaseAggregatingConfig):
+class LLMAggregatingConfig(AggregatingConfig):
     model: str
     name: str = "llm-aggregator"
     subtype: str = "llm-aggregator"
@@ -414,7 +414,7 @@ subtype_to_aggregating_config = {
     "llm": LLMAggregatingConfig,
 }
 
-preset_aggregator_configs = [
+PRESET_AGGREGATOR_CONFIGS = [
     NullAggregatingConfig(),
     MeanAggregatingConfig(),
     MedianAggregatingConfig(),
@@ -426,44 +426,7 @@ preset_aggregator_configs = [
 ]
 
 
-class AggregatorConfigs(BaseConfig):
-    aggregator_configs: dict[str, BaseAggregatingConfig]
-
-    @classmethod
-    def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "AggregatorConfigs":
-        if isinstance(data, dict):
-            if "aggregator_configs" in data:
-                list_data: list[dict] = data["aggregator_configs"]
-        else:
-            list_data = data
-        configs: list[BaseAggregatingConfig] = []
-        for item in list_data:
-            if isinstance(item, str) and item.endswith(
-                ".yaml"
-            ):  # recursive loading of aggregator configs
-                configs.extend(
-                    AggregatorConfigs.from_yaml(item, **kwargs).aggregator_configs.values()
-                )
-            else:
-                configs.append(BaseAggregatingConfig.from_data(item, **kwargs))
-        all_names = [config.name for config in configs]
-        for present_config in preset_aggregator_configs:
-            if present_config.name not in all_names:
-                configs.append(present_config)
-        # todo: check for duplicate names
-        return cls(aggregator_configs={config.name: config for config in configs})
-
-    @classmethod
-    def from_yaml(cls, path: str, **kwargs: t.Any) -> "AggregatorConfigs":
-        with open(path, "r") as f:
-            data = yaml.safe_load(f)
-        if isinstance(data, dict):
-            data = data["aggregator_configs"]
-        return cls.from_data(data, **kwargs)
-
-    def get_config_by_name(self, name: str) -> BaseAggregatingConfig:
-        if name not in self.aggregator_configs:
-            raise ValueError(
-                f"Cannot find aggregating config with name {name}; got aggregator configs: {self.aggregator_configs.keys()}"
-            )
-        return self.aggregator_configs[name]
+class AggregatorConfigCollector(BaseConfigCollector[AggregatingConfig]):
+    BaseConfigType: ClassVar[type[AggregatingConfig]] = AggregatingConfig
+    data_key: ClassVar[str] = "aggregator_configs"
+    preset_configs: ClassVar[list[AggregatingConfig]] = PRESET_AGGREGATOR_CONFIGS

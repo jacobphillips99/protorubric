@@ -5,12 +5,12 @@ from pydantic import model_validator
 
 from open_rubric.configs.aggregating import (
     AggregatedQueryConfig,
-    AggregatorConfigs,
-    BaseAggregatingConfig,
+    AggregatorConfigCollector,
+    AggregatingConfig,
     NullAggregatingConfig,
 )
 from open_rubric.configs.base import BaseConfig
-from open_rubric.configs.evaluating import BaseEvaluatorConfig, EvaluatorConfigs
+from open_rubric.configs.evaluating import EvaluatorConfig, EvaluatorConfigCollector
 from open_rubric.configs.query import QueryConfig
 from open_rubric.configs.scoring import ScoringConfig, ScoringConfigCollector
 
@@ -18,9 +18,9 @@ from open_rubric.configs.scoring import ScoringConfig, ScoringConfigCollector
 class RequirementConfig(BaseConfig):
     name: str
     query: QueryConfig
-    evaluator: BaseEvaluatorConfig
+    evaluator: EvaluatorConfig
     dependency_names: t.Optional[list[str]] = None
-    aggregator: BaseAggregatingConfig = NullAggregatingConfig()
+    aggregator: AggregatingConfig = NullAggregatingConfig()
     _result: t.Optional[AggregatedQueryConfig] = None
 
     @classmethod
@@ -45,14 +45,14 @@ class RequirementConfig(BaseConfig):
             data["query"] = QueryConfig.from_yaml(data["query"], **kwargs)
 
         # replace string evaluator in data with EvaluatorConfig object
-        evaluator_configs: EvaluatorConfigs = kwargs["evaluator_configs"]
-        evaluator: BaseEvaluatorConfig = evaluator_configs.get_config_by_name(data["evaluator"])
+        evaluator_configs: EvaluatorConfigCollector = kwargs["evaluator_configs"]
+        evaluator: EvaluatorConfig = evaluator_configs.get_config_by_name(data["evaluator"])
         data["evaluator"] = evaluator
 
         # replace string aggregator in data with AggregatorConfig object
-        aggregator_configs: AggregatorConfigs = kwargs["aggregator_configs"]
+        aggregator_configs: AggregatorConfigCollector = kwargs["aggregator_configs"]
         agg_name = data.get("aggregator", "null")
-        aggregator: BaseAggregatingConfig = aggregator_configs.get_config_by_name(agg_name)
+        aggregator: AggregatingConfig = aggregator_configs.get_config_by_name(agg_name)
         data["aggregator"] = aggregator
         return cls(**data)
 

@@ -1,25 +1,25 @@
 import copy
 import traceback
 import typing as t
-
+from typing import ClassVar
 import litellm
 import yaml
 from pydantic import model_validator
 
 from open_rubric.configs.aggregating import AggregatedQueryConfig
 from open_rubric.configs.answers import AnyAnswerConfig
-from open_rubric.configs.base import BaseConfig
+from open_rubric.configs.base import BaseConfig, BaseConfigCollector
 from open_rubric.configs.query import QueryConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
 
 
-class BaseEvaluatorConfig(BaseConfig):
+class EvaluatorConfig(BaseConfig):
     name: str
     type: str
 
     @classmethod
-    def from_data(cls, data: dict, **kwargs: t.Any) -> "BaseEvaluatorConfig":
+    def from_data(cls, data: dict, **kwargs: t.Any) -> "EvaluatorConfig":
         if "type" in data:
             if data["type"] == "llm":
                 return ModelEvaluatorConfig.from_data(data, **kwargs)
@@ -30,7 +30,7 @@ class BaseEvaluatorConfig(BaseConfig):
         raise ValueError(f"Invalid evaluator type: {data['type']}")
 
     @classmethod
-    def from_yaml(cls, path: str, **kwargs: t.Any) -> "BaseEvaluatorConfig":
+    def from_yaml(cls, path: str, **kwargs: t.Any) -> "EvaluatorConfig":
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         if "evaluator_configs" in data:
@@ -46,7 +46,7 @@ class BaseEvaluatorConfig(BaseConfig):
         raise NotImplementedError(f"Evaluator {self.name} must implement async_call")
 
 
-class PassThroughEvaluatorConfig(BaseEvaluatorConfig):
+class PassThroughEvaluatorConfig(EvaluatorConfig):
     """
     Special class to skip evaluation of the input query and just return the dependent results.
     Useful for collecting scores from other evaluators.
@@ -67,7 +67,7 @@ class PassThroughEvaluatorConfig(BaseEvaluatorConfig):
         return list(dependent_results.values())
 
 
-class ModelEvaluatorConfig(BaseEvaluatorConfig):
+class ModelEvaluatorConfig(EvaluatorConfig):
     model: str
     provider: str
     n_samples: int = 1
@@ -144,8 +144,8 @@ Does the last response in the conversation follow this rubric item? Rubric item:
         return output_queries
 
 
-class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
-    models: list[ModelEvaluatorConfig]
+class EnsembledModelEvaluatorConfig(EvaluatorConfig):
+    models: list[ModelEvaluatorConfig] # todo: should this be dict?
     n_samples_per_model: t.Optional[int] = None
     type: t.Literal["llm-ensemble"] = "llm-ensemble"
 
@@ -210,36 +210,11 @@ class EnsembledModelEvaluatorConfig(BaseEvaluatorConfig):
         return results
 
 
-preset_evaluator_configs = [PassThroughEvaluatorConfig()]
+PRESET_EVALUATOR_CONFIGS = [PassThroughEvaluatorConfig()]
 
 
-class EvaluatorConfigs(BaseConfig):
-    evaluator_configs: dict[str, BaseEvaluatorConfig]
+class EvaluatorConfigCollector(BaseConfigCollector[EvaluatorConfig]):
+    BaseConfigType: ClassVar[type[EvaluatorConfig]] = EvaluatorConfig
+    data_key: ClassVar[str] = "evaluator_configs"
+    preset_configs: ClassVar[list[EvaluatorConfig]] = PRESET_EVALUATOR_CONFIGS
 
-    @classmethod
-    def from_data(cls, data: list[dict] | dict, **kwargs: t.Any) -> "EvaluatorConfigs":
-        evaluator_configs: list[BaseEvaluatorConfig] = []
-        for evaluator in data:
-            if isinstance(evaluator, str) and evaluator.endswith(".yaml"):
-                # recursive loading of evaluator_configs
-                evaluator_configs.extend(
-                    EvaluatorConfigs.from_yaml(evaluator).evaluator_configs.values()
-                )
-            else:
-                evaluator_configs.append(BaseEvaluatorConfig.from_data(evaluator))
-        all_names = [evaluator.name for evaluator in evaluator_configs]
-        for preset_config in preset_evaluator_configs:
-            if preset_config.name not in all_names:
-                evaluator_configs.append(preset_config)
-        return cls(evaluator_configs={evaluator.name: evaluator for evaluator in evaluator_configs})
-
-    @classmethod
-    def from_yaml(cls, path: str, **kwargs: t.Any) -> "EvaluatorConfigs":
-        with open(path, "r") as f:
-            data = yaml.safe_load(f)
-        if "evaluator_configs" in data:
-            data = data["evaluator_configs"]
-        return cls.from_data(data, **kwargs)
-
-    def get_config_by_name(self, name: str) -> BaseEvaluatorConfig:
-        return self.evaluator_configs[name]
