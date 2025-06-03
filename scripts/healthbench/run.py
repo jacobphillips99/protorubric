@@ -76,7 +76,6 @@ async def grade_one_rubric_item(convo_str: str, rubric_item: dict) -> dict:
         response_dict: dict[str, str] = json.loads(response.texts[0])
     except Exception as e:
         print(f"{e}, {response.texts[0]}")
-        # breakpoint()
     return response_dict
 
 
@@ -132,6 +131,7 @@ if __name__ == "__main__":
     else:
         hb_df = pd.read_csv(HEALTHBENCH_WITH_COMPLETIONS_LOCAL_PATH)
 
+    hb_df.rubrics = hb_df.rubrics.apply(ast.literal_eval)
     print(f"Rubric lengths: {hb_df.rubrics.apply(lambda x: len(x)).describe()}")
     points = hb_df.rubrics.apply(lambda x: [y["points"] for y in x]).explode()
     print(f"Points distribution: {points.describe()}")

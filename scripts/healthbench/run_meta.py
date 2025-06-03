@@ -40,7 +40,7 @@ if __name__ == "__main__":
     rubric, results = asyncio.run(run_row(meta_row))
     print("our results: ")
     for k in [k for k in results.keys() if "answer" in k]:
-        print(f"{k}: {results[k].score}, {results[k].aggregated_reasoning}")
+        print(f"{k}: {results[k].score}, {results[k].reasoning}")
     row_answers = meta_row.binary_labels
     print(f"\nhealthbench results: {row_answers}")
-    # breakpoint()
+    breakpoint()
