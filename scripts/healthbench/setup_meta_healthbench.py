@@ -5,7 +5,7 @@ import pandas as pd
 
 from open_rubric.configs.aggregating import AllAggregatingConfig, LLMAggregatingConfig
 from open_rubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
-from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
+from open_rubric.configs.query import NullQueryConfig, QueryConfig
 from open_rubric.configs.requirement import RequirementConfig, Requirements
 from open_rubric.configs.scoring import BinaryScoringConfig
 from open_rubric.models.model import MODEL
@@ -51,7 +51,7 @@ Here is the instruction set:
 
     reqs["answer_bool"] = RequirementConfig(
         name="answer_bool",
-        query=NULL_QUERY_CONFIG,
+        query=NullQueryConfig(),
         dependency_names=list(names_to_questions.keys()),
         evaluator=PassThroughEvaluatorConfig(),
         aggregator=agg_config,
@@ -59,7 +59,7 @@ Here is the instruction set:
     text_agg_prompt = "Summarize the available information and combine it into a single answer using the boolean 'all' function to combine all the boolean answers. Only answer 'true' if ALL provided information is scored as true. If any of the information is scored as false, answer 'false'."
     reqs["answer_text"] = RequirementConfig(
         name="answer_text",
-        query=NULL_QUERY_CONFIG,
+        query=NullQueryConfig(),
         dependency_names=list(names_to_questions.keys()),
         evaluator=PassThroughEvaluatorConfig(),
         aggregator=LLMAggregatingConfig(model=grader_model, aggregation_prompt=text_agg_prompt),

@@ -7,10 +7,9 @@ import typing as t
 from typing import ClassVar
 
 import numpy as np
-import yaml
 
 from open_rubric.configs.base import BaseConfig, BaseConfigCollector
-from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
+from open_rubric.configs.query import NullQueryConfig, QueryConfig
 from open_rubric.configs.scoring import (
     BinaryScoringConfig,
     FreeTextScoringConfig,
@@ -29,7 +28,7 @@ class AggregatedQueryConfig(BaseConfig):
         t.Union[QueryConfig, "AggregatedQueryConfig"]
     ]  # self-reference enables recursive aggregation
     score: t.Any
-    aggregated_reasoning: t.Optional[str] = None  # todo, recursive
+    reasoning: t.Optional[str] = None
     confidence: t.Optional[t.Any] = None
 
     @property
@@ -40,10 +39,7 @@ class AggregatedQueryConfig(BaseConfig):
         return [query.score for query in self.queries]
 
     def get_reasonings(self) -> list[ReasoningsType]:
-        return [
-            query.reasoning if isinstance(query, QueryConfig) else query.get_reasonings()
-            for query in self.queries
-        ]
+        return [query.reasoning for query in self.queries]
 
     def get_example_query_config(self) -> t.Optional[QueryConfig]:
         # recursively find a query config from the AQC
@@ -79,37 +75,43 @@ class AggregatingConfig(BaseConfig):
         else:
             raise ValueError(f"Invalid data type: {type(data)}")
 
-    @classmethod
-    def from_yaml(cls, path: str, **kwargs: t.Any) -> "AggregatingConfig":
-        with open(path, "r") as f:
-            data = yaml.safe_load(f)
-        return cls.from_data(data, **kwargs)
-
     def get_scores(self, queries: list[QueryConfig | AggregatedQueryConfig]) -> list[t.Any]:
         return [query.score for query in queries]
+
+    def get_reasonings(
+        self, queries: list[QueryConfig | AggregatedQueryConfig]
+    ) -> list[ReasoningsType]:
+        return [query.reasoning for query in queries]
 
     def coerce_score_types(self, scores: list[t.Any], new_type: type[t.Any]) -> list[t.Any]:
         return [new_type(score) for score in scores]
 
     def check_queries(self, queries: list[QueryConfig | AggregatedQueryConfig]) -> bool:
-        if self.valid_scoring_configs is not None:
-            for query in queries:
-                these_queries = (
-                    query.queries if isinstance(query, AggregatedQueryConfig) else [query]
-                )
-                for this_query in these_queries:
-                    assert (this_query == NULL_QUERY_CONFIG) or type(
-                        this_query.scoring_config
-                    ) in self.valid_scoring_configs, f"Invalid scoring config: {type(this_query.scoring_config)} for query in agg config {self.name} with valid configs {self.valid_scoring_configs}"
+        # recursively check that queries are of the correct type and have been answered
+        # NullQueryConfig is a special case; skip it
+        for query in queries:
+            if isinstance(query, NullQueryConfig):
+                continue
+            if isinstance(query, QueryConfig):
+                if not query.been_answered:
+                    breakpoint()
                     assert (
-                        this_query == NULL_QUERY_CONFIG or this_query.been_answered
-                    ), f"Query {this_query.instruction} in agg config {self.name} must be answered before aggregation"
+                        query.been_answered
+                    ), f"Query {query.instruction} must be answered before aggregation"
+                if self.valid_scoring_configs is not None:
+                    assert (
+                        type(query.scoring_config) in self.valid_scoring_configs
+                    ), f"Invalid scoring config: {type(query.scoring_config)} for query in agg config {self.name} with valid configs {self.valid_scoring_configs}"
+            elif isinstance(query, AggregatedQueryConfig):
+                self.check_queries(query.queries)
+            else:
+                raise ValueError(f"Invalid query type: {type(query)}")
         return True
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
-        raise NotImplementedError(f"Aggregating config {self.name} must implement __call__")
+        raise NotImplementedError(f"Aggregating config {self.name} must implement async_call")
 
 
 class NullAggregatingConfig(AggregatingConfig):
@@ -121,7 +123,7 @@ class NullAggregatingConfig(AggregatingConfig):
     subtype: str = "null"
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
@@ -139,7 +141,7 @@ class MeanAggregatingConfig(AggregatingConfig):
         continuous_scoring_configs + discrete_scoring_configs
     )
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
@@ -155,7 +157,7 @@ class MeanAggregatingConfig(AggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
-            aggregated_reasoning=f"Mean over {scores}",
+            reasoning=f"Mean over {scores}",
         )
 
 
@@ -166,7 +168,7 @@ class MedianAggregatingConfig(AggregatingConfig):
         continuous_scoring_configs + discrete_scoring_configs
     )
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
@@ -182,7 +184,7 @@ class MedianAggregatingConfig(AggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
-            aggregated_reasoning=f"Median over {scores}",
+            reasoning=f"Median over {scores}",
         )
 
 
@@ -191,7 +193,7 @@ class ModeAggregatingConfig(AggregatingConfig):
     subtype: str = "mode"
     valid_scoring_configs: list[type[ScoringConfig]] = discrete_scoring_configs
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
@@ -207,7 +209,7 @@ class ModeAggregatingConfig(AggregatingConfig):
             queries=queries,
             score=score,
             confidence=conf,
-            aggregated_reasoning=f"Mode over {scores}",
+            reasoning=f"Mode over {scores}",
         )
 
 
@@ -216,7 +218,7 @@ class AllAggregatingConfig(AggregatingConfig):
     subtype: str = "all"
     valid_scoring_configs: list[type[ScoringConfig]] = [BinaryScoringConfig]
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
@@ -226,7 +228,7 @@ class AllAggregatingConfig(AggregatingConfig):
             queries=queries,
             score=score,
             confidence=1 if score else 0,
-            aggregated_reasoning=f"All over {scores}",
+            reasoning=f"All over {scores}",
         )
 
 
@@ -235,7 +237,7 @@ class AnyAggregatingConfig(AggregatingConfig):
     subtype: str = "any"
     valid_scoring_configs: list[type[ScoringConfig]] = [BinaryScoringConfig]
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
@@ -245,7 +247,7 @@ class AnyAggregatingConfig(AggregatingConfig):
             queries=queries,
             score=score,
             confidence=1 if score else 0,
-            aggregated_reasoning=f"Any over {scores}",
+            reasoning=f"Any over {scores}",
         )
 
 
@@ -254,14 +256,14 @@ class MaxAggregatingConfig(AggregatingConfig):
     subtype: str = "max"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
         scores = self.get_scores(queries)
         score = max(scores)
         return AggregatedQueryConfig(
-            queries=queries, score=score, confidence=None, aggregated_reasoning=f"Max over {scores}"
+            queries=queries, score=score, confidence=None, reasoning=f"Max over {scores}"
         )
 
 
@@ -270,14 +272,14 @@ class MinAggregatingConfig(AggregatingConfig):
     subtype: str = "min"
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
         scores = self.get_scores(queries)
         score = min(scores)
         return AggregatedQueryConfig(
-            queries=queries, score=score, confidence=None, aggregated_reasoning=f"Min over {scores}"
+            queries=queries, score=score, confidence=None, reasoning=f"Min over {scores}"
         )
 
 
@@ -287,13 +289,13 @@ class WeightedAggregatingConfig(AggregatingConfig):
     valid_scoring_configs: list[type[ScoringConfig]] = continuous_scoring_configs
     weights: t.Optional[list[float]] = None
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         assert (
             "weights" in kwargs or self.weights is not None
         ), f"Weights must be provided for weighted aggregation; got kwargs: {kwargs}"
-        raise NotImplementedError(f"Aggregating config {self.name} must implement __call__")
+        raise NotImplementedError(f"Aggregating config {self.name} must implement async_call")
 
 
 class WeightedSumAggregatingConfig(WeightedAggregatingConfig):
@@ -303,7 +305,7 @@ class WeightedSumAggregatingConfig(WeightedAggregatingConfig):
         continuous_scoring_configs + discrete_scoring_configs
     )
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         assert (
@@ -325,7 +327,7 @@ class WeightedSumAggregatingConfig(WeightedAggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
-            aggregated_reasoning=f"Weighted sum over {scores} with weights {weights}",
+            reasoning=f"Weighted sum over {scores} with weights {weights}",
         )
 
 
@@ -336,7 +338,7 @@ class WeightedAverageAggregatingConfig(WeightedAggregatingConfig):
         continuous_scoring_configs + discrete_scoring_configs
     )
 
-    def __call__(
+    async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
     ) -> AggregatedQueryConfig:
         assert (
@@ -358,7 +360,7 @@ class WeightedAverageAggregatingConfig(WeightedAggregatingConfig):
             queries=queries,
             score=score,
             confidence=None,
-            aggregated_reasoning=f"Weighted average over {scores} with weights {weights}",
+            reasoning=f"Weighted average over {scores} with weights {weights}",
         )
 
 
@@ -376,25 +378,15 @@ class LLMAggregatingConfig(AggregatingConfig):
     ) -> AggregatedQueryConfig:
         self.check_queries(queries)
         scoring_config = FreeTextScoringConfig()
-        results = []
-        for query in queries:
-            if isinstance(query, AggregatedQueryConfig):
-                aqc = query
-                results.extend(
-                    [
-                        f"Score: {score}, Reasoning: {reasoning}"
-                        for score, reasoning in zip(aqc.get_scores(), aqc.get_reasonings())
-                    ]
-                )
-            else:
-                results.append(f"Score: {query.score}, Reasoning: {query.reasoning}")
-        results_str = "\n".join(results)
+        results_str = "\n".join(
+            [f"- Score: {query.score}, Reasoning: {query.reasoning}" for query in queries]
+        )
         prompt = f"""
 {self.aggregation_prompt}
+Results:
 {results_str}
 {scoring_config.to_prompt()}
 """.strip()
-        # TODO: must get recursive with the queries
         req = ModelRequest(
             model=self.model,
             model_input=ModelInput(
@@ -407,7 +399,7 @@ class LLMAggregatingConfig(AggregatingConfig):
         return AggregatedQueryConfig(
             queries=queries,
             score=answer.score,
-            aggregated_reasoning=answer.reasoning,
+            reasoning=answer.reasoning,
             confidence=None,
         )
 

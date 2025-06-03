@@ -29,20 +29,12 @@ class RequirementConfig(BaseConfig):
         assert all(
             k in kwargs for k in ["evaluator_configs", "aggregator_configs"]
         ), f"Missing required kwargs [evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
-        # todo remove me
         scoring_configs: ScoringConfigCollector = kwargs["scoring_configs"]
-        if "query" in data:
-            query = data["query"]
-            if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
-                query["scoring_config"] = scoring_configs.get_config_by_name(
-                    query["scoring_config"]
-                )
-        else:
-            query = "null"
 
-        data["query"] = QueryConfig.from_data(query, **kwargs)
-        if "query" in data and isinstance(data["query"], str):
-            data["query"] = QueryConfig.from_yaml(data["query"], **kwargs)
+        query = data["query"]
+        if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
+            query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
+        data["query"] = QueryConfig.from_data_or_yaml(query, **kwargs)
 
         # replace string evaluator in data with EvaluatorConfig object
         evaluator_configs: EvaluatorConfigCollector = kwargs["evaluator_configs"]
@@ -54,17 +46,15 @@ class RequirementConfig(BaseConfig):
         agg_name = data.get("aggregator", "null")
         aggregator: AggregatingConfig = aggregator_configs.get_config_by_name(agg_name)
         data["aggregator"] = aggregator
+
         return cls(**data)
 
     async def async_evaluate(
         self, dependent_results: t.Optional[dict[str, AggregatedQueryConfig]] = None
     ) -> AggregatedQueryConfig:
         evaluated_queries = await self.evaluator.async_call(self.query, dependent_results)
-        # TODO: just make all aggregators async??
-        aggregated_query: AggregatedQueryConfig = (
-            await self.aggregator.async_call(evaluated_queries)
-            if hasattr(self.aggregator, "async_call")
-            else self.aggregator(evaluated_queries)
+        aggregated_query: AggregatedQueryConfig = await self.aggregator.async_call(
+            evaluated_queries
         )
         self._result = aggregated_query
         print(

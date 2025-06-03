@@ -43,10 +43,14 @@ class BaseConfigCollector(BaseConfig, Generic[T]):
     preset_configs: ClassVar[list[T]] = []
 
     @classmethod
-    def from_data(cls, data: list[dict | str] | dict, **kwargs: t.Any) -> "BaseConfigCollector[T]":
+    def from_data(
+        cls, data: list[dict | str] | dict | None, **kwargs: t.Any
+    ) -> "BaseConfigCollector[T]":
         if isinstance(data, dict):
             if cls.data_key in data:
                 list_data: list[dict | str] = data[cls.data_key]
+        elif data is None:
+            list_data = []
         else:
             list_data = data
         configs: list[T] = []

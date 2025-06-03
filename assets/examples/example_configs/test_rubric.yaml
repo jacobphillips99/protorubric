@@ -65,6 +65,9 @@ requirements:
     evaluator: my-sole-llm
 
   - name: summarizer
+    query:
+      instruction: null
+      scoring_config: free_text
     dependency_names:
       - overall_quality
       - job_quality

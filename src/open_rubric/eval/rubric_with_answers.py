@@ -1,32 +1,29 @@
-import copy
 import typing as t
 
 import numpy as np
 
 from open_rubric.configs.aggregating import AggregatedQueryConfig
-from open_rubric.configs.answers import ANSWER_TYPE_TO_SCORE_TYPE_MAPPING
-from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
+from open_rubric.configs.answers import ANSWER_TYPE_TO_PYTHON_TYPE
+from open_rubric.configs.query import NullQueryConfig
 from open_rubric.eval.metrics import results_to_metrics
 from open_rubric.rubric import Rubric
 
 
 def generate_random_answers(rubric: Rubric) -> dict[str, t.Any]:
     # random answer generator
-    answers = {}
+    answers: dict[str, t.Any] = {}
     for req in rubric.requirements.get_all_requirements():
-        answer_type = ANSWER_TYPE_TO_SCORE_TYPE_MAPPING.get(
-            req.query.scoring_config.answer_type, str
-        )
-        if answer_type == int:
-            answers[req.name] = np.random.randint(-100, 100)
-        elif answer_type == float:
-            answers[req.name] = np.random.random()
-        elif answer_type == bool:
-            answers[req.name] = np.random.random() > 0.5
-        elif answer_type == str:
-            answers[req.name] = np.random.choice(["a", "b", "c"])
+        python_type = ANSWER_TYPE_TO_PYTHON_TYPE[req.query.scoring_config.answer_type]
+        if python_type == int:
+            answers[req.name] = int(np.random.randint(-100, 100))
+        elif python_type == float:
+            answers[req.name] = float(np.random.random())
+        elif python_type == bool:
+            answers[req.name] = bool(np.random.random() > 0.5)
+        elif python_type == str:
+            answers[req.name] = str(np.random.choice(["a", "b", "c"]))
         else:
-            raise ValueError(f"Unsupported answer type: {answer_type}")
+            raise ValueError(f"Unsupported answer type: {python_type}")
     return answers
 
 
@@ -77,25 +74,31 @@ class RubricWithAnswers(Rubric):
         for req_name, agg_query_config in level_results.items():
             if self.teacher_force and req_name in self.answers:
                 found_prediction = agg_query_config.score
-                found_answer = self.answers[req_name] # todo - would be nice to load answers as AQCs / create teacher forcing answer AQCs
+                provided_answer = self.answers[
+                    req_name
+                ]  # todo - would be nice to load answers as AQCs / create teacher forcing answer AQCs
                 # if correct, don't teacher force; if wrong, teacher force
-                if found_prediction == found_answer:
+                if found_prediction == provided_answer:
                     state[req_name] = agg_query_config
                 else:
-                    # note: AQC may be composed of AQCs! use recursive search to find example query config
-                    found_query_config = agg_query_config.get_example_query_config()
-                    assert found_query_config is not None, "No query config found in AQC!"
-                    scoring_config = found_query_config.scoring_config
-                    this_null_query_config = copy.deepcopy(NULL_QUERY_CONFIG)
-                    this_null_query_config.scoring_config = scoring_config
+                    req = self.requirements.get_requirement_by_name(req_name)
+                    original_scoring_config = req.query.scoring_config
+                    answer = original_scoring_config.answer_type(
+                        score=provided_answer,
+                        reasoning=f"The true answer is {provided_answer}",
+                    )
+                    replacement_query_config = NullQueryConfig(
+                        scoring_config=original_scoring_config, answer=answer
+                    )
                     state[req_name] = AggregatedQueryConfig(
-                        queries=[this_null_query_config],
+                        queries=[replacement_query_config],
                         score=self.answers[req_name],
                         confidence=None,
                     )
                     print(
                         f"Teacher forced {req_name} to {self.answers[req_name]} from {found_prediction}"
                     )
+
             else:
                 state[req_name] = agg_query_config
         return state

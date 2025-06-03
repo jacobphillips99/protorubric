@@ -7,7 +7,7 @@ from open_rubric.configs.aggregating import (
     WeightedSumAggregatingConfig,
 )
 from open_rubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
-from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
+from open_rubric.configs.query import NullQueryConfig, QueryConfig
 from open_rubric.configs.requirement import RequirementConfig, Requirements
 from open_rubric.configs.scoring import name_to_scoring_config
 from open_rubric.rubric import Rubric
@@ -49,7 +49,7 @@ def make_rubric_from_hb_dicts(rubric_dicts: list[dict], grader_model: str) -> Ru
     mode_collector_name = "mode_collector"
     mode_vote_collector = RequirementConfig(
         name=mode_collector_name,
-        query=NULL_QUERY_CONFIG,
+        query=NullQueryConfig(),
         evaluator=PassThroughEvaluatorConfig(),
         aggregator=ModeAggregatingConfig(),
         dependency_names=list(requirement_configs.keys()),
@@ -58,7 +58,7 @@ def make_rubric_from_hb_dicts(rubric_dicts: list[dict], grader_model: str) -> Ru
     weighted_average_collector_name = "weighted_average_collector"
     weighted_average_collector = RequirementConfig(
         name=weighted_average_collector_name,
-        query=NULL_QUERY_CONFIG,
+        query=NullQueryConfig(),
         evaluator=PassThroughEvaluatorConfig(),
         aggregator=WeightedAverageAggregatingConfig(weights=weights),
         dependency_names=list(requirement_configs.keys()),
@@ -67,7 +67,7 @@ def make_rubric_from_hb_dicts(rubric_dicts: list[dict], grader_model: str) -> Ru
     weighted_sum_collector_name = "weighted_sum_collector"
     weighted_sum_collector = RequirementConfig(
         name=weighted_sum_collector_name,
-        query=NULL_QUERY_CONFIG,
+        query=NullQueryConfig(),
         evaluator=PassThroughEvaluatorConfig(),
         aggregator=WeightedSumAggregatingConfig(weights=weights),
         dependency_names=list(requirement_configs.keys()),

@@ -20,12 +20,12 @@ class Rubric(BaseConfig):
     @classmethod
     def from_data(cls, data: t.Any, **kwargs: t.Any) -> "Rubric":
         assert "requirements" in data, f"Rubric must contain requirements; got {data.keys()}"
-        scoring_configs = ScoringConfigCollector.from_data_or_yaml(data.get("scoring_configs", []))
+        scoring_configs = ScoringConfigCollector.from_data_or_yaml(data.get("scoring_configs"))
         evaluator_configs = EvaluatorConfigCollector.from_data_or_yaml(
-            data.get("evaluator_configs", [])
+            data.get("evaluator_configs")
         )
         aggregator_configs = AggregatorConfigCollector.from_data_or_yaml(
-            data.get("aggregator_configs", [])
+            data.get("aggregator_configs")
         )
         requirements = Requirements.from_data(
             data["requirements"],

@@ -141,7 +141,7 @@ Does the last response in the conversation follow this rubric item? Rubric item:
 
         output_queries = [copy.deepcopy(query) for _ in outputs]
         for output, output_query in zip(outputs, output_queries):
-            output_query._answer = output
+            output_query.answer = output
         return output_queries
 
 

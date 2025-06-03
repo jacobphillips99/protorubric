@@ -22,7 +22,7 @@ BoolAnswerConfig = AnswerConfig[bool]
 IntAnswerConfig = AnswerConfig[int]
 FloatAnswerConfig = AnswerConfig[float]
 
-ANSWER_TYPE_TO_SCORE_TYPE_MAPPING: dict[t.Type[AnswerConfig], t.Type[t.Any]] = {
+ANSWER_TYPE_TO_PYTHON_TYPE: dict[t.Type[AnswerConfig], t.Type[t.Any]] = {
     StringAnswerConfig: str,
     BoolAnswerConfig: bool,
     IntAnswerConfig: int,

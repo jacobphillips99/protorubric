@@ -12,19 +12,15 @@ class QueryConfig(BaseConfig):
     inputs: t.Optional[t.Any] = None
     example: t.Optional[str] = None
     scoring_config: ScoringConfig
-    _answer: t.Optional[AnswerConfig] = None
+    answer: t.Optional[AnswerConfig] = None
 
     @classmethod
-    def from_data(cls, data: dict | str, **kwargs: t.Any) -> "QueryConfig":
-        if isinstance(data, str):
-            if data == "null":
-                return NULL_QUERY_CONFIG
-            else:
-                raise ValueError(f"Invalid query config: {data}")
-
-        if "scoring_config" in data and isinstance(data["scoring_config"], str):
-            data["scoring_config"] = kwargs["scoring_configs"].get_config_by_name(
-                data["scoring_config"]
+    def from_data(cls, data: dict, **kwargs: t.Any) -> "QueryConfig":
+        if data.get("instruction") is None:
+            # null query
+            return NullQueryConfig(
+                scoring_config=data.get("scoring_config", ScoringConfig()),
+                answer=data.get("answer", None),
             )
         return super().from_data(data, **kwargs)
 
@@ -36,21 +32,29 @@ class QueryConfig(BaseConfig):
 
     @property
     def been_answered(self) -> bool:
-        return self._answer is not None
+        return self.answer is not None
 
     @property
     def score(self) -> t.Any:
-        return self._answer.score if self._answer else None
+        return self.answer.score if self.answer else None
 
     @property
     def reasoning(self) -> str | None:
-        return self._answer.reasoning if self._answer else None
+        return self.answer.reasoning if self.answer else None
 
 
-NULL_QUERY_CONFIG = QueryConfig(
-    instruction="None",
-    inputs=None,
-    example=None,
-    scoring_config=ScoringConfig(),
-    _answer=None,
-)
+class NullQueryConfig(QueryConfig):
+    """
+    Special null query configuration that skips answering the query and
+    optionally includes a provided score and answer.
+    """
+
+    def __init__(self, **kwargs: t.Any) -> None:
+        super().__init__(
+            instruction="None",
+            inputs=None,
+            example=None,
+            scoring_config=kwargs.get("scoring_config", ScoringConfig()),
+            answer=kwargs.get("answer", None),
+            **{k: v for k, v in kwargs.items() if k not in ["scoring_config", "answer"]},
+        )
