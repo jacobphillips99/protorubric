@@ -4,7 +4,7 @@ import os
 import typing as t
 
 from open_rubric.constants import EVAL_BASE_DIR
-from open_rubric.eval.rubric_with_answers import RubricWithAnswers, generate_test_answers
+from open_rubric.eval.rubric_with_answers import RubricWithAnswers, generate_random_answers
 from open_rubric.rubric import Rubric
 
 from .healthbench.run import make_hb_example
@@ -32,7 +32,7 @@ async def run(
 ) -> None:
     rubric = Rubric.from_yaml(rubric_path)
     # outputs = await rubric.asolve(inputs)
-    answers = generate_test_answers(rubric)
+    answers = generate_random_answers(rubric)
 
     rubric_with_answers_tf = RubricWithAnswers.from_rubric_and_answers(
         copy.deepcopy(rubric), answers, teacher_force=True

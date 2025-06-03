@@ -5,8 +5,8 @@ from pydantic import model_validator
 
 from open_rubric.configs.aggregating import (
     AggregatedQueryConfig,
-    AggregatorConfigCollector,
     AggregatingConfig,
+    AggregatorConfigCollector,
     NullAggregatingConfig,
 )
 from open_rubric.configs.base import BaseConfig

@@ -5,6 +5,7 @@ Returns an AggregatedQueryConfig object that contains the queries, the score, an
 
 import typing as t
 from typing import ClassVar
+
 import numpy as np
 import yaml
 
@@ -43,6 +44,17 @@ class AggregatedQueryConfig(BaseConfig):
             query.reasoning if isinstance(query, QueryConfig) else query.get_reasonings()
             for query in self.queries
         ]
+    
+    def get_example_query_config(self) -> t.Optional[QueryConfig]:
+        # recursively find a query config from the AQC
+        for query in self.queries:
+            if isinstance(query, QueryConfig):
+                return query
+            else:
+                maybe_query_config = query.get_example_query_config()
+                if maybe_query_config is not None:
+                    return maybe_query_config
+        return None
 
 
 class AggregatingConfig(BaseConfig):

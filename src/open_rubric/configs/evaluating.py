@@ -2,6 +2,7 @@ import copy
 import traceback
 import typing as t
 from typing import ClassVar
+
 import litellm
 import yaml
 from pydantic import model_validator
@@ -145,7 +146,7 @@ Does the last response in the conversation follow this rubric item? Rubric item:
 
 
 class EnsembledModelEvaluatorConfig(EvaluatorConfig):
-    models: list[ModelEvaluatorConfig] # todo: should this be dict?
+    models: list[ModelEvaluatorConfig]  # todo: should this be dict?
     n_samples_per_model: t.Optional[int] = None
     type: t.Literal["llm-ensemble"] = "llm-ensemble"
 
@@ -217,4 +218,3 @@ class EvaluatorConfigCollector(BaseConfigCollector[EvaluatorConfig]):
     BaseConfigType: ClassVar[type[EvaluatorConfig]] = EvaluatorConfig
     data_key: ClassVar[str] = "evaluator_configs"
     preset_configs: ClassVar[list[EvaluatorConfig]] = PRESET_EVALUATOR_CONFIGS
-

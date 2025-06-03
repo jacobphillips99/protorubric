@@ -19,11 +19,16 @@ class Rubric(BaseConfig):
 
     @classmethod
     def from_data(cls, data: t.Any, **kwargs: t.Any) -> "Rubric":
-        assert "scoring_configs" in data, f"Rubric must contain scoring_configs; got {data.keys()}"
         assert "requirements" in data, f"Rubric must contain requirements; got {data.keys()}"
-        scoring_configs = ScoringConfigCollector.from_data_or_yaml(data["scoring_configs"])
-        evaluator_configs = EvaluatorConfigCollector.from_data_or_yaml(data["evaluator_configs"])
-        aggregator_configs = AggregatorConfigCollector.from_data_or_yaml(data.get("aggregator_configs"))
+        scoring_configs = ScoringConfigCollector.from_data_or_yaml(
+            data.get("scoring_configs", [])
+        )
+        evaluator_configs = EvaluatorConfigCollector.from_data_or_yaml(
+            data.get("evaluator_configs", [])
+        )
+        aggregator_configs = AggregatorConfigCollector.from_data_or_yaml(
+            data.get("aggregator_configs", [])
+        )
         requirements = Requirements.from_data(
             data["requirements"],
             scoring_configs=scoring_configs,
@@ -32,13 +37,11 @@ class Rubric(BaseConfig):
         )
         return cls(requirements=requirements)
 
-    @classmethod
-    def from_yaml(cls, path: str, **kwargs: t.Any) -> "Rubric":
-        with open(path, "r") as f:
-            data = yaml.safe_load(f)
-        return cls.from_data(data, **kwargs)
-
     def setup_graph(self, inputs: t.Any) -> list[list[RequirementConfig]]:
+        """
+        Sets up the graph of requirements and their dependencies.
+        Returns a list of levels, where each level is a list of requirements that can be solved in parallel.
+        """
         # check if inputs need to be added to requirements
         self.requirements.update_with_inputs(inputs)
 
@@ -60,6 +63,7 @@ class Rubric(BaseConfig):
     ) -> dict[str, AggregatedQueryConfig]:
         """
         Updates the state dictionary with the results of the current level.
+        This is here to optionally allow a custom update function to allow e.g. teacher forcing with correct answers
         """
         state.update(level_results)
         return state
@@ -68,10 +72,14 @@ class Rubric(BaseConfig):
         self,
         inputs: t.Any,  # TODO: fix any
     ) -> dict[str, AggregatedQueryConfig]:
+        """
+        Solves the rubric by iteratively solving each level of the DAG of requirements.
+        Returns a dictionary of results for each requirement in the rubric.
+        """
         # setup graph of requirements and their dependencies
         level_sorted_reqs = self.setup_graph(inputs)
 
-        # initialize results / solved requirements dictionary
+        # initialize results / state dictionary
         results: dict[str, AggregatedQueryConfig] = dict()
         state: dict[str, AggregatedQueryConfig] = dict()
 

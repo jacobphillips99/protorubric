@@ -82,10 +82,10 @@ See `scripts/test_viz.py` for a runnable example.
 Use `RubricWithAnswers` to compare rubric evaluation against known answers, or even invoke `teacher_force=True` to force the rubric to use the known answers when considering dependent requirements:
 
 ```python
-from open_rubric.eval.rubric_with_answers import RubricWithAnswers, generate_test_answers
+from open_rubric.eval.rubric_with_answers import RubricWithAnswers, generate_random_answers
 
 rubric = Rubric.from_yaml("my_rubric.yaml")
-answers = generate_test_answers(rubric)
+answers = generate_random_answers(rubric)
 
 # Teacher-forced evaluation
 rwa_tf = RubricWithAnswers.from_rubric_and_answers(rubric, answers, teacher_force=True)

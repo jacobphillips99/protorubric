@@ -5,12 +5,12 @@ import numpy as np
 
 from open_rubric.configs.aggregating import AggregatedQueryConfig
 from open_rubric.configs.answers import ANSWER_TYPE_TO_SCORE_TYPE_MAPPING
-from open_rubric.configs.query import NULL_QUERY_CONFIG
+from open_rubric.configs.query import NULL_QUERY_CONFIG, QueryConfig
 from open_rubric.eval.metrics import results_to_metrics
 from open_rubric.rubric import Rubric
 
 
-def generate_test_answers(rubric: Rubric) -> dict[str, t.Any]:
+def generate_random_answers(rubric: Rubric) -> dict[str, t.Any]:
     # random answer generator
     answers = {}
     for req in rubric.requirements.get_all_requirements():
@@ -72,20 +72,29 @@ class RubricWithAnswers(Rubric):
     ) -> dict[str, AggregatedQueryConfig]:
         """
         Adds teacher forcing to the state dictionary. If teacher_force is True, the state dictionary is updated with the answers.
-        # TODO: currently adding a null query config because we don't have a reasoning / scoring config for the answer. need to handle prompting
+        # TODO: currently adding a null query config because we don't have a reasoning / scoring config for the answer. need to handle prompting later w/ models?
         """
         for req_name, agg_query_config in level_results.items():
             # TODO: should probably use the original AQC here somehow?
             if self.teacher_force and req_name in self.answers:
-                scoring_config = agg_query_config.queries[0].scoring_config
-                this_null_query_config = copy.deepcopy(NULL_QUERY_CONFIG)
-                this_null_query_config.scoring_config = scoring_config
-                state[req_name] = AggregatedQueryConfig(
-                    queries=[this_null_query_config],
-                    score=self.answers[req_name],
-                    confidence=None,
-                )
-                print(f"Teacher forced {req_name} to {self.answers[req_name]}")
+                found_prediction = agg_query_config.score
+                found_answer = self.answers[req_name]
+                # if correct, don't teacher force; if wrong, teacher force
+                if found_prediction == found_answer:
+                    state[req_name] = agg_query_config
+                else:
+                    # note: AQC may be composed of AQCs! use recursive search
+                    found_query_config = agg_query_config.get_example_query_config()
+                    assert found_query_config is not None, "No query config found in AQC!"
+                    scoring_config = found_query_config.scoring_config
+                    this_null_query_config = copy.deepcopy(NULL_QUERY_CONFIG)
+                    this_null_query_config.scoring_config = scoring_config
+                    state[req_name] = AggregatedQueryConfig(
+                        queries=[this_null_query_config],
+                        score=self.answers[req_name],
+                        confidence=None,
+                    )
+                    print(f"Teacher forced {req_name} to {self.answers[req_name]} from {found_prediction}")
             else:
                 state[req_name] = agg_query_config
         return state

@@ -36,6 +36,7 @@ class BaseConfigCollector(BaseConfig, Generic[T]):
     """
     Base config "collector" type. Contains a dict of subconfigs; allows for parsing of recursive config types
     """
+
     configs: dict[str, T]
     BaseConfigType: ClassVar[type[T]]
     data_key: ClassVar[str] = "base_configs"
