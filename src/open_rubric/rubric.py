@@ -16,6 +16,7 @@ from open_rubric.utils.dag import topological_levels
 
 class Rubric(BaseConfig):
     requirements: Requirements
+    _levels: t.Optional[list[list[RequirementConfig]]] = None
 
     @classmethod
     def from_data(cls, data: t.Any, **kwargs: t.Any) -> "Rubric":
@@ -34,15 +35,18 @@ class Rubric(BaseConfig):
             aggregator_configs=aggregator_configs,
         )
         return cls(requirements=requirements)
+    
+    @property
+    def levels(self) -> list[list[RequirementConfig]]:
+        if self._levels is None:
+            self._levels = self.setup_graph()
+        return self._levels
 
-    def setup_graph(self, inputs: t.Any) -> list[list[RequirementConfig]]:
+    def setup_graph(self) -> list[list[RequirementConfig]]:
         """
         Sets up the graph of requirements and their dependencies.
         Returns a list of levels, where each level is a list of requirements that can be solved in parallel.
         """
-        # check if inputs need to be added to requirements
-        self.requirements.update_with_inputs(inputs)
-
         # get topological levels of requirements via dependencies
         level_sorted_requirement_names = topological_levels(self.requirements.dependencies)
         level_sorted_reqs = [
@@ -75,7 +79,8 @@ class Rubric(BaseConfig):
         Returns a dictionary of results for each requirement in the rubric.
         """
         # setup graph of requirements and their dependencies
-        level_sorted_reqs = self.setup_graph(inputs)
+        self.requirements.update_with_inputs(inputs)
+        level_sorted_reqs = self.levels
 
         # initialize results / state dictionary
         results: dict[str, AggregatedQueryConfig] = dict()

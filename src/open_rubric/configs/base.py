@@ -26,7 +26,6 @@ class BaseConfig(BaseModel):
     @classmethod
     def from_data_or_yaml(cls, data: t.Any | str, **kwargs: t.Any) -> "BaseConfig":
         if isinstance(data, str) and data.endswith(".yaml"):
-            print(f"loading from yaml: {data}")
             return cls.from_yaml(data, **kwargs)
         else:
             return cls.from_data(data, **kwargs)
@@ -81,3 +80,6 @@ class BaseConfigCollector(BaseConfig, Generic[T]):
                 f"Cannot find config with name {name}; got configs: {self.configs.keys()}"
             )
         return self.configs[name]
+    
+    def add_config(self, config: T) -> None:
+        self.configs[config.name] = config

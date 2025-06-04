@@ -244,7 +244,7 @@ name_to_scoring_config = {
     **subtype_to_continuous_scoring_configs,
     **subtype_to_free_text_scoring_configs,
 }
-PRESET_SCORING_CONFIGS = [BinaryScoringConfig(), UnitScalarScoringConfig()]
+PRESET_SCORING_CONFIGS = [BinaryScoringConfig(), UnitScalarScoringConfig(), FreeTextScoringConfig()]
 
 
 class ScoringConfigCollector(BaseConfigCollector[ScoringConfig]):

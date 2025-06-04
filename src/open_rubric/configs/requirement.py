@@ -31,9 +31,13 @@ class RequirementConfig(BaseConfig):
         ), f"Missing required kwargs [evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
         scoring_configs: ScoringConfigCollector = kwargs["scoring_configs"]
 
+        # TODO: clean me up
         query = data["query"]
         if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
-            query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
+            if isinstance(query["scoring_config"], str):
+                query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
+            else:
+                query["scoring_config"] = ScoringConfig.from_data(query["scoring_config"])
         data["query"] = QueryConfig.from_data_or_yaml(query, **kwargs)
 
         # replace string evaluator in data with EvaluatorConfig object
