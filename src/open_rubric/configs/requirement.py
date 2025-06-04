@@ -35,7 +35,9 @@ class RequirementConfig(BaseConfig):
         query = data["query"]
         if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
             if isinstance(query["scoring_config"], str):
-                query["scoring_config"] = scoring_configs.get_config_by_name(query["scoring_config"])
+                query["scoring_config"] = scoring_configs.get_config_by_name(
+                    query["scoring_config"]
+                )
             else:
                 query["scoring_config"] = ScoringConfig.from_data(query["scoring_config"])
         data["query"] = QueryConfig.from_data_or_yaml(query, **kwargs)
@@ -62,7 +64,8 @@ class RequirementConfig(BaseConfig):
         )
         self._result = aggregated_query
         print(
-            f"{self.name}: {self._result.score} over {self._result.n_votes} votes aggregated by {self.aggregator.name}"
+            f"{self.name}: {self._result.score}"
+            + (f" over {self._result.n_votes} votes aggregated by {self.aggregator.name}" if self._result.n_votes > 1 else "")
         )
         return aggregated_query
 

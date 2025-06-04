@@ -80,6 +80,6 @@ class BaseConfigCollector(BaseConfig, Generic[T]):
                 f"Cannot find config with name {name}; got configs: {self.configs.keys()}"
             )
         return self.configs[name]
-    
+
     def add_config(self, config: T) -> None:
         self.configs[config.name] = config

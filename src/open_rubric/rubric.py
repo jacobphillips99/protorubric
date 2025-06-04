@@ -35,7 +35,7 @@ class Rubric(BaseConfig):
             aggregator_configs=aggregator_configs,
         )
         return cls(requirements=requirements)
-    
+
     @property
     def levels(self) -> list[list[RequirementConfig]]:
         if self._levels is None:
@@ -55,7 +55,8 @@ class Rubric(BaseConfig):
         ]
         print(f"\n\nFound {len(level_sorted_reqs)} levels:")
         for i, level in enumerate(level_sorted_reqs):
-            print(f"Level {i + 1}: [{', '.join([req.name for req in level])}]")
+            level_strs = [f"{req.name} ({req.query.scoring_config.name})" for req in level]
+            print(f"Level {i + 1}: [{', '.join(level_strs)}]")
         return level_sorted_reqs
 
     def update_state(
