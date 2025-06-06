@@ -12,17 +12,18 @@ autograde(solution, rubric)
 """
 
 import asyncio
+
 from open_rubric.configs.aggregating import AggregatorConfigCollector
 from open_rubric.configs.evaluating import EvaluatorConfigCollector, ModelEvaluatorConfig
 from open_rubric.configs.query import QueryConfig
 from open_rubric.configs.requirement import RequirementConfig, Requirements
 from open_rubric.configs.scoring import ScoringConfigCollector
+from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelRequest, ModelResponse
 from open_rubric.rubric import Rubric
 
-from open_rubric.models.model import MODEL
-
 use_model_name = "gpt-4o-mini"
+
 
 def setup_example() -> tuple[str, str, Rubric]:
     agg_collector = AggregatorConfigCollector.from_data_or_yaml(None)
@@ -70,7 +71,10 @@ def setup_example() -> tuple[str, str, Rubric]:
     requirement_dicts.append(
         {
             "name": "valuation",
-            "query": {"instruction": "Determine the dollar value of the company", **default_query_vars},
+            "query": {
+                "instruction": "Determine the dollar value of the company",
+                **default_query_vars,
+            },
             "dependency_names": [req["name"] for req in requirement_dicts],
             **default_llm_vars,
         }
@@ -99,6 +103,7 @@ def setup_example() -> tuple[str, str, Rubric]:
     _ = rubric.levels
     return job, problem, rubric
 
+
 def get_completion(problem: str) -> str:
     req = ModelRequest(
         model=use_model_name,
@@ -106,6 +111,7 @@ def get_completion(problem: str) -> str:
     )
     res: ModelResponse = asyncio.run(MODEL.agenerate(req))
     return res.texts[0]
+
 
 if __name__ == "__main__":
     job, problem, rubric = setup_example()
@@ -128,15 +134,17 @@ Rubric:
 {rubric_to_instructions}
 
 Return an answer for each step in the rubric as a JSON dictionary with the key being the step name and the value being the answer.
-Do not include ```json or ``` at the beginning or end of the response. 
+Do not include ```json or ``` at the beginning or end of the response.
 """.strip()
     breakpoint()
     problem_completion = get_completion(problem_with_steps)
     breakpoint()
 
-    full_convo = "\n".join([
-        f"User: {problem}",
-        f"Assistant: {problem_completion}",
-    ])
+    full_convo = "\n".join(
+        [
+            f"User: {problem}",
+            f"Assistant: {problem_completion}",
+        ]
+    )
     rubric_completion = rubric.solve(full_convo)
     breakpoint()

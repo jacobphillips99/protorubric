@@ -13,6 +13,7 @@ from open_rubric.configs.base import BaseConfig, BaseConfigCollector
 from open_rubric.configs.query import QueryConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
+from src.open_rubric.configs.dependent_results import format_dependent_results
 
 
 class EvaluatorConfig(BaseConfig):
@@ -95,18 +96,7 @@ class ModelEvaluatorConfig(EvaluatorConfig):
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
         scoring_config_prompt = query.scoring_config.to_prompt()
-        if dependent_results:
-            dep_results_strings = dict()
-            for dep_name, dep_result in dependent_results.items():
-                dep_results_strings[dep_name] = (
-                    f"Dependency {dep_name}: selected `{dep_result.score}` from {dep_result.queries[0].scoring_config.to_description()}"
-                )
-            dependent_results_prompt = (
-                "Here is other information to help you grade the rubric item:\n\n"
-                + "\n".join([f"- {v}" for v in dep_results_strings.values()])
-            )
-        else:
-            dependent_results_prompt = ""
+        dependent_results_prompt = format_dependent_results(dependent_results, include_internals=True)
 
         prompt = f"""
 You are a helpful assistant that evaluates a rubric item based on a given conversation.
@@ -123,6 +113,7 @@ Does the last response in the conversation follow this rubric item? Rubric item:
 {dependent_results_prompt}
 {scoring_config_prompt}
 """.strip()
+        breakpoint()
         model_request = ModelRequest(
             model=self.model,
             provider=self.provider,

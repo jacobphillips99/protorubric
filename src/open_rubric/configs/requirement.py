@@ -65,7 +65,11 @@ class RequirementConfig(BaseConfig):
         self._result = aggregated_query
         print(
             f"{self.name}: {self._result.score}"
-            + (f" over {self._result.n_votes} votes aggregated by {self.aggregator.name}" if self._result.n_votes > 1 else "")
+            + (
+                f" over {self._result.n_votes} votes aggregated by {self.aggregator.name}"
+                if self._result.n_votes > 1
+                else ""
+            )
         )
         return aggregated_query
 

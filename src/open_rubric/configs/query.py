@@ -42,6 +42,11 @@ class QueryConfig(BaseConfig):
     def reasoning(self) -> str | None:
         return self.answer.reasoning if self.answer else None
 
+    def to_explanation(self, **kwargs: t.Any) -> str:
+        assert self.been_answered, "Cannot generate explanation for unanswered query!"
+        scoring_method_description = self.scoring_config.to_description()
+        return f"Selected `{self.score}` with reasoning: {self.reasoning} using {scoring_method_description}."
+
 
 class NullQueryConfig(QueryConfig):
     """

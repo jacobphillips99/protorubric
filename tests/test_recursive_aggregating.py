@@ -57,16 +57,19 @@ agg2 = AggregatedQueryConfig(
     confidence=0.5,
 )
 
+all_aggregator = aggregator_config_collector.get_config_by_name("all")
 llm_aggregator_config = LLMAggregatingConfig(
     model="gpt-4o-mini",
-    aggregation_prompt="Aggregate the provided results into a single result.",
+    aggregation_prompt="Aggregate the provided results into a single result. Use the binary `all` to combine the results, meaning that all results must be true for the final answer to be true.",
 )
 
-
-async def main() -> AggregatedQueryConfig:
-    return await llm_aggregator_config.async_call(queries=[agg1, agg2])
+async def main() -> dict[str, AggregatedQueryConfig]:
+    return {"text": await llm_aggregator_config.async_call(queries=[agg1, agg2]), "all": await all_aggregator.async_call(queries=[agg1, agg2])}
 
 
 if __name__ == "__main__":
-    res = asyncio.run(main())
+    recursively_aggregated = asyncio.run(main())
+
+    from open_rubric.configs.dependent_results import format_dependent_results
+    text = format_dependent_results(recursively_aggregated, include_internals=True)
     breakpoint()
