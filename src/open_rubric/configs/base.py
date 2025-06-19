@@ -37,9 +37,9 @@ class BaseConfigCollector(BaseConfig, Generic[T]):
     """
 
     configs: dict[str, T]
-    BaseConfigType: ClassVar[type[T]]
+    BaseConfigType: ClassVar[type[T]]  # type: ignore[misc]
     data_key: ClassVar[str] = "base_configs"
-    preset_configs: ClassVar[list[T]] = []
+    preset_configs: ClassVar[list[T]] = []  # type: ignore[misc]
 
     @classmethod
     def from_data(

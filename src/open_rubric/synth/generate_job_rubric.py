@@ -8,14 +8,13 @@ Next, we'll create a test solution and then autograde the rubric.
 problem = LLM(job_description)
 rubric = LLM(problem)
 solution = LLM(problem)
-autograde(solution, rubric)
+results = autograde(solution, rubric)
 """
 
 import asyncio
 
 from open_rubric.configs.aggregating import AggregatorConfigCollector
 from open_rubric.configs.evaluating import EvaluatorConfigCollector, ModelEvaluatorConfig
-from open_rubric.configs.query import QueryConfig
 from open_rubric.configs.requirement import RequirementConfig, Requirements
 from open_rubric.configs.scoring import ScoringConfigCollector
 from open_rubric.models.model import MODEL

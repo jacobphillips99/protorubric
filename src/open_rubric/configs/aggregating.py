@@ -27,6 +27,7 @@ class AggregatedQueryConfig(BaseConfig):
     """
     A loose wrapper that acts as a container for answered QueryConfigs. This object can hold nested AggregatedQueryConfigs, enabling recursive aggregation.
     """
+
     queries: list[
         t.Union[QueryConfig, "AggregatedQueryConfig"]
     ]  # self-reference enables recursive aggregation
@@ -67,23 +68,16 @@ class AggregatedQueryConfig(BaseConfig):
             # Collect internal explanations
             for query in self.queries:
                 if isinstance(query, QueryConfig):
-                    internals.append({
-                        "explanation": query.to_explanation(),
-                        "internals": []
-                    })
+                    internals.append({"explanation": query.to_explanation(), "internals": []})
                 else:
                     internals.append(query.to_explanation(include_internals=include_internals))
-        return {
-            "explanation": explanation,
-            "internals": internals
-        }
+        return {"explanation": explanation, "internals": internals}
 
 
 class AggregatingConfig(BaseConfig):
     name: str
     subtype: str
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = None
-    _requires_async: bool = False  # Override this in subclasses that must be async
 
     @classmethod
     def from_data(cls, data: dict, **kwargs: t.Any) -> "AggregatingConfig":
@@ -101,32 +95,6 @@ class AggregatingConfig(BaseConfig):
                 raise ValueError(f"Cannot find aggregating config with subtype {subtype}")
         else:
             raise ValueError(f"Invalid data type: {type(data)}")
-
-    def __call__(
-        self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
-    ) -> AggregatedQueryConfig:
-        """
-        Synchronous interface for aggregating configs that don't require async operations.
-        For configs that require async operations, use async_call() instead.
-        """
-        if self._requires_async:
-            raise RuntimeError(
-                f"Config {self.name} requires async operations. Use 'await config.async_call(...)' instead of 'config(...)'."
-            )
-        
-        # For sync configs, we can run the async_call in a sync context since they don't actually await anything
-        import asyncio
-        
-        # Check if we're already in an async context
-        try:
-            loop = asyncio.get_running_loop()
-            # We're in an async context, so we can't use asyncio.run
-            raise RuntimeError(
-                f"Cannot use sync interface for {self.name} within an async context. Use 'await config.async_call(...)' instead."
-            )
-        except RuntimeError:
-            # No running loop, so we can create one
-            return asyncio.run(self.async_call(queries, **kwargs))
 
     def get_scores(self, queries: list[QueryConfig | AggregatedQueryConfig]) -> list[t.Any]:
         return [query.score for query in queries]
@@ -147,7 +115,6 @@ class AggregatingConfig(BaseConfig):
                 continue
             if isinstance(query, QueryConfig):
                 if not query.been_answered:
-                    breakpoint()
                     assert (
                         query.been_answered
                     ), f"Query {query.instruction} must be answered before aggregation"
@@ -183,6 +150,7 @@ class NullAggregatingConfig(AggregatingConfig):
         return AggregatedQueryConfig(
             queries=queries,
             score=queries[0].score,
+            reasoning=queries[0].reasoning,
             confidence=1,
         )
 
@@ -425,7 +393,6 @@ class LLMAggregatingConfig(AggregatingConfig):
     valid_scoring_configs: t.Optional[list[type[ScoringConfig]]] = (
         None  # indicates all scoring configs are valid
     )
-    _requires_async: bool = True  # LLM calls require async
 
     async def async_call(
         self, queries: list[QueryConfig | AggregatedQueryConfig], **kwargs: t.Any
@@ -469,7 +436,6 @@ subtype_to_aggregating_config = {
     "min": MinAggregatingConfig,
     "weighted": WeightedAggregatingConfig,
     "weighted_sum": WeightedSumAggregatingConfig,
-    "weighted_average": WeightedAverageAggregatingConfig,
     "llm": LLMAggregatingConfig,
 }
 

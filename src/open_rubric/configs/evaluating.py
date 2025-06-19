@@ -10,10 +10,10 @@ from pydantic import model_validator
 from open_rubric.configs.aggregating import AggregatedQueryConfig
 from open_rubric.configs.answers import AnyAnswerConfig
 from open_rubric.configs.base import BaseConfig, BaseConfigCollector
+from open_rubric.configs.dependent_results import format_dependent_results
 from open_rubric.configs.query import QueryConfig
 from open_rubric.models.model import MODEL
 from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
-from src.open_rubric.configs.dependent_results import format_dependent_results
 
 
 class EvaluatorConfig(BaseConfig):
@@ -96,7 +96,11 @@ class ModelEvaluatorConfig(EvaluatorConfig):
         **kwargs: t.Any,
     ) -> list[QueryConfig]:
         scoring_config_prompt = query.scoring_config.to_prompt()
-        dependent_results_prompt = format_dependent_results(dependent_results, include_internals=True)
+        if dependent_results:
+            dependent_results_prompt = format_dependent_results(
+                dependent_results, include_internals=kwargs.get("include_internals", False)
+            )
+            dependent_results_prompt = f"Here is other information to help you grade the rubric item:\n\n{dependent_results_prompt}"
 
         prompt = f"""
 You are a helpful assistant that evaluates a rubric item based on a given conversation.
@@ -113,7 +117,7 @@ Does the last response in the conversation follow this rubric item? Rubric item:
 {dependent_results_prompt}
 {scoring_config_prompt}
 """.strip()
-        breakpoint()
+
         model_request = ModelRequest(
             model=self.model,
             provider=self.provider,
@@ -125,7 +129,6 @@ Does the last response in the conversation follow this rubric item? Rubric item:
         try:
             outputs = [query.scoring_config.parse_response(text) for text in response.texts]
         except Exception as e:
-            breakpoint()
             raise ValueError(
                 f"Error parsing response: {response.texts}, {e}, {traceback.format_exc()}; {response.texts}"
             )
