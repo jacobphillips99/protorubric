@@ -23,19 +23,19 @@ from open_rubric.rubric import Rubric
 
 use_model_name = "gpt-4o-mini"
 
+agg_collector = AggregatorConfigCollector.from_data_or_yaml(None)
+eval_collector = EvaluatorConfigCollector.from_data_or_yaml(None)
+scoring_collector = ScoringConfigCollector.from_data_or_yaml(None)
+
+my_llm_evaluator = ModelEvaluatorConfig(
+    name="my-llm-evaluator",
+    type="llm",
+    model=use_model_name,
+)
+eval_collector.add_config(my_llm_evaluator)
+
 
 def setup_example() -> tuple[str, str, Rubric]:
-    agg_collector = AggregatorConfigCollector.from_data_or_yaml(None)
-    eval_collector = EvaluatorConfigCollector.from_data_or_yaml(None)
-    scoring_collector = ScoringConfigCollector.from_data_or_yaml(None)
-
-    my_llm_evaluator = ModelEvaluatorConfig(
-        name="my-llm-evaluator",
-        type="llm",
-        model=use_model_name,
-    )
-    eval_collector.add_config(my_llm_evaluator)
-
     # lets handmake an example
     job = "financial analyst"
     problem = "is the valuation of Scale AI over 25 billion dollars?"

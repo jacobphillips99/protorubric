@@ -53,11 +53,13 @@ class Rubric(BaseConfig):
             [self.requirements.get_requirement_by_name(req) for req in level]
             for level in level_sorted_requirement_names
         ]
-        print(f"\n\nFound {len(level_sorted_reqs)} levels:")
-        for i, level in enumerate(level_sorted_reqs):
+        return level_sorted_reqs
+
+    def print_levels(self) -> None:
+        print(f"\n\nFound {len(self.levels)} levels:")
+        for i, level in enumerate(self.levels):
             level_strs = [f"{req.name} ({req.query.scoring_config.name})" for req in level]
             print(f"Level {i + 1}: [{', '.join(level_strs)}]")
-        return level_sorted_reqs
 
     def update_state(
         self,
@@ -82,6 +84,7 @@ class Rubric(BaseConfig):
         # setup graph of requirements and their dependencies
         self.requirements.update_with_inputs(inputs)
         level_sorted_reqs = self.levels
+        self.print_levels()
 
         # initialize results / state dictionary
         results: dict[str, AggregatedQueryConfig] = dict()
@@ -145,3 +148,13 @@ class Rubric(BaseConfig):
         with open(path, "rb") as f:
             rubric: "Rubric" = pickle.load(f)
         return rubric
+
+    def describe(self) -> str:
+        title = f"Rubric with {len(self.requirements.requirements)} requirements"
+        level_descriptions = []
+        for i, level in enumerate(self.levels):
+            this_level = []
+            for req in level:
+                this_level.append(f"- {req.name.title()}: {req.query.instruction}{' + (' + ', '.join(req.dependency_names) if req.dependency_names else '' + ')' if req.dependency_names else ''} => ({req.query.scoring_config.name})")
+            level_descriptions.append(f"Level {i + 1}:" +  "\n" + '\n'.join(this_level))
+        return "\n".join([title, *level_descriptions])
