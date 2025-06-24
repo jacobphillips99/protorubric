@@ -1,4 +1,4 @@
-from open_rubric.rubric import Rubric
+from protorubric.rubric import Rubric
 
 TEST_RUBRIC_PATH = "assets/examples/example_configs/test_rubric.yaml"
 

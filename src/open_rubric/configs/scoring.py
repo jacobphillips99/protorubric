@@ -13,13 +13,13 @@ from typing import ClassVar
 import yaml
 from pydantic import model_validator
 
-from open_rubric.configs.answers import (
+from protorubric.configs.answers import (
     AnyAnswerConfig,
     BoolAnswerConfig,
     FloatAnswerConfig,
     StringAnswerConfig,
 )
-from open_rubric.configs.base import BaseConfig, BaseConfigCollector
+from protorubric.configs.base import BaseConfig, BaseConfigCollector
 
 
 class ScoringConfig(BaseConfig):

@@ -1,8 +1,8 @@
 import os
 
-from open_rubric.constants import VIZ_OUTPUT_DIR
-from open_rubric.rubric import Rubric
-from open_rubric.viz.visualize import visualize_rubric
+from protorubric.constants import VIZ_OUTPUT_DIR
+from protorubric.rubric import Rubric
+from protorubric.viz.visualize import visualize_rubric
 
 from .healthbench.run import make_hb_example
 from .tester import TEST_INPUT_CONVO_STR, TEST_RUBRIC_PATH

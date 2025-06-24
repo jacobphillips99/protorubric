@@ -2,12 +2,12 @@ import asyncio
 
 import pandas as pd
 
-from open_rubric.configs.aggregating import AggregatedQueryConfig
-from open_rubric.rubric import Rubric
+from protorubric.configs.aggregating import AggregatedQueryConfig
+from protorubric.rubric import Rubric
 from scripts.healthbench.run import HEALTHBENCH_LOCAL_PATH, HEALTHBENCH_REMOTE_PATH
 
 from .setup_healthbench import check_path_or_download, get_limited_df
-from .setup_meta_healthbench import make_convo_with_completion, meta_hb_rubric_to_open_rubric
+from .setup_meta_healthbench import make_convo_with_completion, meta_hb_rubric_to_protorubric
 
 HEALTHBENCH_META_REMOTE_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_meta_eval.jsonl"
 HEALTHBENCH_META_LOCAL_PATH = "assets/examples/healthbench/healthbench_meta.jsonl"
@@ -16,7 +16,7 @@ GRADER_MODEL = "gpt-4.1"
 
 
 async def run_row(row: pd.Series) -> tuple[Rubric, dict[str, AggregatedQueryConfig]]:
-    rubric = await meta_hb_rubric_to_open_rubric(
+    rubric = await meta_hb_rubric_to_protorubric(
         meta_row.rubric, rubric_constructor_model=GRADER_MODEL, grader_model=GRADER_MODEL
     )
     convo_with_response = make_convo_with_completion(row)

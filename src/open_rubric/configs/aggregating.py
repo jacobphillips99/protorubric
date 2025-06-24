@@ -8,17 +8,17 @@ from typing import ClassVar
 
 import numpy as np
 
-from open_rubric.configs.base import BaseConfig, BaseConfigCollector
-from open_rubric.configs.query import NullQueryConfig, QueryConfig
-from open_rubric.configs.scoring import (
+from protorubric.configs.base import BaseConfig, BaseConfigCollector
+from protorubric.configs.query import NullQueryConfig, QueryConfig
+from protorubric.configs.scoring import (
     BinaryScoringConfig,
     FreeTextScoringConfig,
     ScoringConfig,
     continuous_scoring_configs,
     discrete_scoring_configs,
 )
-from open_rubric.models.model import MODEL
-from open_rubric.models.model_types import ModelInput, ModelRequest
+from protorubric.models.model import MODEL
+from protorubric.models.model_types import ModelInput, ModelRequest
 
 ReasoningsType = str | None | list["ReasoningsType"]
 

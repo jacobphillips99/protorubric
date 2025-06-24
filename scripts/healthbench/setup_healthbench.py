@@ -13,8 +13,8 @@ import typing as t
 import pandas as pd
 import requests
 
-from open_rubric.models.model import MODEL
-from open_rubric.models.model_types import ModelInput, ModelRequest
+from protorubric.models.model import MODEL
+from protorubric.models.model_types import ModelInput, ModelRequest
 
 
 def check_path_or_download(remote_path: str, local_path: str, overwrite: bool = False) -> str:

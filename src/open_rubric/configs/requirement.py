@@ -3,16 +3,16 @@ import typing as t
 import yaml
 from pydantic import model_validator
 
-from open_rubric.configs.aggregating import (
+from protorubric.configs.aggregating import (
     AggregatedQueryConfig,
     AggregatingConfig,
     AggregatorConfigCollector,
     NullAggregatingConfig,
 )
-from open_rubric.configs.base import BaseConfig
-from open_rubric.configs.evaluating import EvaluatorConfig, EvaluatorConfigCollector
-from open_rubric.configs.query import QueryConfig
-from open_rubric.configs.scoring import ScoringConfig, ScoringConfigCollector
+from protorubric.configs.base import BaseConfig
+from protorubric.configs.evaluating import EvaluatorConfig, EvaluatorConfigCollector
+from protorubric.configs.query import QueryConfig
+from protorubric.configs.scoring import ScoringConfig, ScoringConfigCollector
 
 
 class RequirementConfig(BaseConfig):

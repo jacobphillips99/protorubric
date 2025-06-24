@@ -8,8 +8,8 @@ import typing as t
 import litellm
 from llm_rate_limiter.rate_limit import rate_limiter
 
-from open_rubric.models.cache import ASYNC_REQUEST_CACHE
-from open_rubric.models.model_types import (
+from protorubric.models.cache import ASYNC_REQUEST_CACHE
+from protorubric.models.model_types import (
     ModelInput,
     ModelKwargs,
     ModelRequest,
@@ -116,7 +116,7 @@ class Model:
     async def agenerate(
         self, model_request: ModelRequest, invalidate_cache: bool = False
     ) -> ModelResponse:
-        env_invalidate_cache = os.environ.get("OPEN_RUBRIC_INVALIDATE_CACHE") == "True"
+        env_invalidate_cache = os.environ.get("protorubric_INVALIDATE_CACHE") == "True"
         if not invalidate_cache and not env_invalidate_cache:
             cached_response = await ASYNC_REQUEST_CACHE.aget(model_request)
             if cached_response:

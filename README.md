@@ -1,4 +1,4 @@
-# open-rubric
+# protorubric
 
 Open-source tools for autograding rubrics with LLMs.
 
@@ -18,7 +18,7 @@ Requirements: Python 3.10 or higher.
 1. Install the package and core dependencies:
    ```bash
    git clone <repo_url>
-   cd open-rubric
+   cd protorubric
    pip install -r requirements.txt
    pip install -e .
    ```
@@ -32,12 +32,13 @@ Requirements: Python 3.10 or higher.
    - macOS: `brew install graphviz`
    - Ubuntu/Debian: `sudo apt-get install graphviz`
 </details>
+
 ## Quick Start
 
 ### Define a rubric
 
 Create a rubric file, either in YAML or code, describing scoring, evaluators, aggregators, and requirements.
-Example in [`assets/examples/example_configs/test_rubric.yaml`](https://github.com/jacobphillips99/open-rubric/blob/main/assets/examples/example_configs/test_rubric.yaml) or [`assets/examples/healthbench/healthbench_to_open_rubric_utils.py`](https://github.com/jacobphillips99/open-rubric/blob/main/assets/examples/healthbench/healthbench_to_open_rubric_utils.py).
+Example in [`assets/examples/example_configs/test_rubric.yaml`](https://github.com/jacobphillips99/protorubric/blob/main/assets/examples/example_configs/test_rubric.yaml) or [`assets/examples/healthbench/healthbench_to_protorubric_utils.py`](https://github.com/jacobphillips99/protorubric/blob/main/assets/examples/healthbench/healthbench_to_protorubric_utils.py).
 
 You can also create a rubric in code:
 <details>
@@ -124,7 +125,7 @@ This makes evaluation significantly faster, as we can evaluate the requirements 
 
 
 ```python
-from open_rubric.rubric import Rubric
+from protorubric.rubric import Rubric
 
 # Load rubric from YAML
 rubric = Rubric.from_yaml("my_rubric.yaml")
@@ -142,7 +143,7 @@ results = rubric.asolve(inputs)
 Generate visual representations of the rubric DAG and component usage:
 
 ```python
-from open_rubric.viz.visualize import visualize_rubric
+from protorubric.viz.visualize import visualize_rubric
 
 # visualize and save outputs under assets/viz_outputs/
 visualizer, rubric = visualize_rubric(rubric=rubric, inputs=inputs, output_dir="assets/viz_outputs")
@@ -157,7 +158,7 @@ See `scripts/test_viz.py` for a runnable example.
 Use `RubricWithAnswers` to compare rubric evaluation against known answers, or even invoke `teacher_force=True` to force the rubric to use the known answers when considering dependent requirements. This enables us to evaluate either the full-length performance of a rubric or model or break up the evaluation into multiple parts.
 
 ```python
-from open_rubric.eval.rubric_with_answers import RubricWithAnswers, generate_random_answers
+from protorubric.eval.rubric_with_answers import RubricWithAnswers, generate_random_answers
 
 rubric = Rubric.from_yaml("my_rubric.yaml")
 answers = generate_random_answers(rubric)
@@ -176,7 +177,7 @@ TODO TODO
 
 ## Project Structure
 
-- `src/open_rubric/` — core library modules.
+- `src/protorubric/` — core library modules.
 - `assets/` — example rubrics, evaluation results, and visualization outputs.
 - `scripts/` — helper scripts for testing and HealthBench integration.
 - `notebooks/` — example Jupyter notebooks.

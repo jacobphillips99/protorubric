@@ -7,12 +7,12 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import plotly.graph_objects as go
 
-from open_rubric.rubric import Rubric
-from open_rubric.utils.dag import topological_levels
+from protorubric.rubric import Rubric
+from protorubric.utils.dag import topological_levels
 
 
 class RubricVisualizer:
-    """Comprehensive visualization toolkit for Open Rubric system."""
+    """Comprehensive visualization toolkit for protorubric system."""
 
     def __init__(self, rubric: Rubric):
         self.rubric = rubric

@@ -1,4 +1,4 @@
-from open_rubric.configs.aggregating import PRESET_AGGREGATOR_CONFIGS, AggregatorConfigCollector
+from protorubric.configs.aggregating import PRESET_AGGREGATOR_CONFIGS, AggregatorConfigCollector
 
 TEST_AGGREGATOR_PATH = "assets/examples/example_configs/my_aggregator_config.yaml"
 

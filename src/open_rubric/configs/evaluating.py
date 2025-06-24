@@ -7,13 +7,13 @@ import litellm
 import yaml
 from pydantic import model_validator
 
-from open_rubric.configs.aggregating import AggregatedQueryConfig
-from open_rubric.configs.answers import AnyAnswerConfig
-from open_rubric.configs.base import BaseConfig, BaseConfigCollector
-from open_rubric.configs.dependent_results import format_dependent_results
-from open_rubric.configs.query import QueryConfig
-from open_rubric.models.model import MODEL
-from open_rubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
+from protorubric.configs.aggregating import AggregatedQueryConfig
+from protorubric.configs.answers import AnyAnswerConfig
+from protorubric.configs.base import BaseConfig, BaseConfigCollector
+from protorubric.configs.dependent_results import format_dependent_results
+from protorubric.configs.query import QueryConfig
+from protorubric.models.model import MODEL
+from protorubric.models.model_types import ModelInput, ModelKwargs, ModelRequest
 
 
 class EvaluatorConfig(BaseConfig):

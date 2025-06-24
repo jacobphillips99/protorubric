@@ -2,11 +2,11 @@ import typing as t
 
 import numpy as np
 
-from open_rubric.configs.aggregating import AggregatedQueryConfig
-from open_rubric.configs.answers import ANSWER_TYPE_TO_PYTHON_TYPE
-from open_rubric.configs.query import NullQueryConfig
-from open_rubric.eval.metrics import results_to_metrics
-from open_rubric.rubric import Rubric
+from protorubric.configs.aggregating import AggregatedQueryConfig
+from protorubric.configs.answers import ANSWER_TYPE_TO_PYTHON_TYPE
+from protorubric.configs.query import NullQueryConfig
+from protorubric.eval.metrics import results_to_metrics
+from protorubric.rubric import Rubric
 
 
 def generate_random_answers(rubric: Rubric) -> dict[str, t.Any]:

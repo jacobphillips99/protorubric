@@ -1,4 +1,4 @@
-from open_rubric.configs.evaluating import EvaluatorConfigCollector
+from protorubric.configs.evaluating import EvaluatorConfigCollector
 
 TEST_EVALUATOR_PATH = "assets/examples/example_configs/my_llm_committee_evaluator.yaml"
 

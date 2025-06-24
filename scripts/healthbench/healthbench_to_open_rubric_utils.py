@@ -1,16 +1,16 @@
 import litellm
 
-from open_rubric.configs.aggregating import (
+from protorubric.configs.aggregating import (
     ModeAggregatingConfig,
     NullAggregatingConfig,
     WeightedAverageAggregatingConfig,
     WeightedSumAggregatingConfig,
 )
-from open_rubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
-from open_rubric.configs.query import NullQueryConfig, QueryConfig
-from open_rubric.configs.requirement import RequirementConfig, Requirements
-from open_rubric.configs.scoring import name_to_scoring_config
-from open_rubric.rubric import Rubric
+from protorubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
+from protorubric.configs.query import NullQueryConfig, QueryConfig
+from protorubric.configs.requirement import RequirementConfig, Requirements
+from protorubric.configs.scoring import name_to_scoring_config
+from protorubric.rubric import Rubric
 
 
 def hb_rubric_to_requirement(rubric_item: dict, name: str, grader_model: str) -> RequirementConfig:

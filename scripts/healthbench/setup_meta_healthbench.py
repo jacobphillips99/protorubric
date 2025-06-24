@@ -3,20 +3,20 @@ import json
 import litellm
 import pandas as pd
 
-from open_rubric.configs.aggregating import AllAggregatingConfig, LLMAggregatingConfig
-from open_rubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
-from open_rubric.configs.query import NullQueryConfig, QueryConfig
-from open_rubric.configs.requirement import RequirementConfig, Requirements
-from open_rubric.configs.scoring import BinaryScoringConfig
-from open_rubric.models.model import MODEL
-from open_rubric.models.model_types import ModelInput, ModelRequest
-from open_rubric.rubric import Rubric
+from protorubric.configs.aggregating import AllAggregatingConfig, LLMAggregatingConfig
+from protorubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
+from protorubric.configs.query import NullQueryConfig, QueryConfig
+from protorubric.configs.requirement import RequirementConfig, Requirements
+from protorubric.configs.scoring import BinaryScoringConfig
+from protorubric.models.model import MODEL
+from protorubric.models.model_types import ModelInput, ModelRequest
+from protorubric.rubric import Rubric
 
 
-async def meta_hb_rubric_to_open_rubric(
+async def meta_hb_rubric_to_protorubric(
     meta_hb_rubric: str, rubric_constructor_model: str, grader_model: str
 ) -> Rubric:
-    # use an LLM to convert the paragraph-like meta healthbench rubric into a set of requirements for open-rubric
+    # use an LLM to convert the paragraph-like meta healthbench rubric into a set of requirements for protorubric
     prompt = f"""
 Breakdown the following instruction set into a list of requirements.
 The requirements should have a name and be phrased as questions that can be answered with a binary yes/no.
@@ -33,7 +33,7 @@ Here is the instruction set:
     # construct the dictionary of the broken down meta rubric
     names_to_questions = json.loads(response.texts[0])
 
-    # build our open-rubric requirements
+    # build our protorubric requirements
     # the meta healthbench rubrics are aggreagated by "all" and are all "binary" scoring configs
     reqs: dict[str, RequirementConfig] = dict()
     evaluator_config = ModelEvaluatorConfig(

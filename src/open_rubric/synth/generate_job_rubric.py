@@ -13,13 +13,13 @@ results = autograde(solution, rubric)
 
 import asyncio
 
-from open_rubric.configs.aggregating import AggregatorConfigCollector
-from open_rubric.configs.evaluating import EvaluatorConfigCollector, ModelEvaluatorConfig
-from open_rubric.configs.requirement import RequirementConfig, Requirements
-from open_rubric.configs.scoring import ScoringConfigCollector
-from open_rubric.models.model import MODEL
-from open_rubric.models.model_types import ModelInput, ModelRequest, ModelResponse
-from open_rubric.rubric import Rubric
+from protorubric.configs.aggregating import AggregatorConfigCollector
+from protorubric.configs.evaluating import EvaluatorConfigCollector, ModelEvaluatorConfig
+from protorubric.configs.requirement import RequirementConfig, Requirements
+from protorubric.configs.scoring import ScoringConfigCollector
+from protorubric.models.model import MODEL
+from protorubric.models.model_types import ModelInput, ModelRequest, ModelResponse
+from protorubric.rubric import Rubric
 
 use_model_name = "gpt-4o-mini"
 

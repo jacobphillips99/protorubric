@@ -1,14 +1,14 @@
 import asyncio
 
-from open_rubric.configs.aggregating import (
+from protorubric.configs.aggregating import (
     AggregatedQueryConfig,
     AggregatorConfigCollector,
     LLMAggregatingConfig,
 )
-from open_rubric.configs.dependent_results import format_dependent_results
-from open_rubric.configs.evaluating import ModelEvaluatorConfig
-from open_rubric.configs.query import QueryConfig
-from open_rubric.configs.scoring import ScoringConfigCollector
+from protorubric.configs.dependent_results import format_dependent_results
+from protorubric.configs.evaluating import ModelEvaluatorConfig
+from protorubric.configs.query import QueryConfig
+from protorubric.configs.scoring import ScoringConfigCollector
 
 scoring_config_collector = ScoringConfigCollector.from_data([])
 aggregator_config_collector = AggregatorConfigCollector.from_data([])

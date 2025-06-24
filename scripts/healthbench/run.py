@@ -5,11 +5,11 @@ import os
 
 import pandas as pd
 
-from open_rubric.models.model import MODEL
-from open_rubric.models.model_types import ModelInput, ModelRequest
-from open_rubric.rubric import Rubric
+from protorubric.models.model import MODEL
+from protorubric.models.model_types import ModelInput, ModelRequest
+from protorubric.rubric import Rubric
 
-from .healthbench_to_open_rubric_utils import make_rubric_from_hb_dicts
+from .healthbench_to_protorubric_utils import make_rubric_from_hb_dicts
 from .setup_healthbench import check_path_or_download, get_limited_df, run_completions
 
 HEALTHBENCH_REMOTE_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl"

@@ -3,9 +3,9 @@ import copy
 import os
 import typing as t
 
-from open_rubric.constants import EVAL_BASE_DIR
-from open_rubric.eval.rubric_with_answers import RubricWithAnswers, generate_random_answers
-from open_rubric.rubric import Rubric
+from protorubric.constants import EVAL_BASE_DIR
+from protorubric.eval.rubric_with_answers import RubricWithAnswers, generate_random_answers
+from protorubric.rubric import Rubric
 
 from .healthbench.run import make_hb_example
 

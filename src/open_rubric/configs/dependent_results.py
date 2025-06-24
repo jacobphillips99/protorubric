@@ -4,7 +4,7 @@ For a cleaner architecture, each AggregatedQueryConfig should have a `to_explana
 This module is used to format the dependent results into one string with proper indentation.
 """
 
-from open_rubric.configs.aggregating import AggregatedQueryConfig
+from protorubric.configs.aggregating import AggregatedQueryConfig
 
 
 def format_dependent_results(

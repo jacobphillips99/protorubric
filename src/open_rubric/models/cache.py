@@ -4,7 +4,7 @@ Optionally invalidate the cache by setting the invalidate_cache flag to True.
 
 TODO: make a LRU or size limit
 
-Set `OPEN_RUBRIC_INVALIDATE_CACHE` to True to invalidate the cache.
+Set `protorubric_INVALIDATE_CACHE` to True to invalidate the cache.
 """
 
 import time
@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 
 import aiosqlite
 
-from open_rubric.models.model_types import ModelRequest, ModelResponse
+from protorubric.models.model_types import ModelRequest, ModelResponse
 
 DB_PATH = "assets/request_cache.db"
 

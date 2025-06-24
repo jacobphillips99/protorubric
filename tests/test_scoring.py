@@ -1,4 +1,4 @@
-from open_rubric.configs.scoring import (
+from protorubric.configs.scoring import (
     PRESET_SCORING_CONFIGS,
     ScoringConfig,
     ScoringConfigCollector,
