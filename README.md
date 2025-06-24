@@ -15,17 +15,27 @@ Open-source tools for autograding rubrics with LLMs.
 <summary>Click to expand</summary>
 Requirements: Python 3.10 or higher.
 
-1. Install the package and core dependencies:
-   ```bash
-   git clone <repo_url>
-   cd protorubric
-   pip install -r requirements.txt
-   pip install -e .
-   ```
+First, install [uv](https://github.com/astral-sh/uv) (a drop-in, faster replacement for `pip`):
+
+```bash
+# via the official install script
+curl -Ls https://astral.sh/uv/install.sh | sh
+# or with Homebrew
+brew install astral-sh/uv/uv
+```
+
+Then install the package and core dependencies:
+
+```bash
+git clone <repo_url>
+cd protorubric
+uv pip install -r requirements.txt     # core deps
+uv pip install -e .                    # editable install
+```
 
 2. (Optional) Install visualization dependencies:
    ```bash
-   pip install -r requirements-viz.txt
+   uv pip install -r requirements-viz.txt
    ```
 
 3. Install Graphviz for network diagrams:
