@@ -28,7 +28,7 @@ brew install astral-sh/uv/uv
 Then install the package and core dependencies:
 
 ```bash
-git clone <repo_url>
+git clone https://github.com/jacobphillips99/protorubric
 cd protorubric
 uv pip install -r requirements.txt     # core deps
 uv pip install -e .                    # editable install
@@ -50,7 +50,7 @@ uv pip install -e .                    # editable install
   - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`
 - Optional environment variables:
   - `PROTORUBRIC_LOG_LEVEL` (default: `ERROR`)
-  - `protorubric_INVALIDATE_CACHE` (set to `True` to bypass the on-disk cache)
+  - `PROTORUBRIC_INVALIDATE_CACHE` (set to `True` to bypass the on-disk cache)
 - Rate limits and available providers/models come from `rate_limits.yaml`.
 
 ## Quick Start
@@ -279,9 +279,13 @@ Notes:
 ## Caching and rate limiting
 
 - Responses are cached to `assets/request_cache.db` and keyed by request hash
-- Set `protorubric_INVALIDATE_CACHE=True` to bypass the cache
-- Token-aware rate limits are enforced per `rate_limits.yaml`
+- Set `PROTORUBRIC_INVALIDATE_CACHE=True` to bypass the cache
+- Token-aware rate limits are enforced per `rate_limits.yaml` with the `llm-rate-limiter` package. See [LLM Rate Limiter](https://github.com/jacobphillips99/llm-rate-limiter).
 
 ## License
 
 This project is licensed under the MIT License - see the `LICENSE` file for details.
+
+References:
+- protorubric repo: https://github.com/jacobphillips99/protorubric
+- llm-rate-limiter repo: https://github.com/jacobphillips99/llm-rate-limiter
