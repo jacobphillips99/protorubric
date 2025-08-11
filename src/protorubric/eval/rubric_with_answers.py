@@ -69,7 +69,6 @@ class RubricWithAnswers(Rubric):
     ) -> dict[str, AggregatedQueryConfig]:
         """
         Adds teacher forcing to the state dictionary. If teacher_force is True, the state dictionary is updated with the answers.
-        # TODO: currently adding a null query config because we don't have a reasoning / scoring config for the answer. need to handle prompting later w/ models?
         """
         for req_name, agg_query_config in level_results.items():
             if self.teacher_force and req_name in self.answers:

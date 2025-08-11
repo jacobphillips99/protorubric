@@ -140,7 +140,7 @@ Does the last response in the conversation follow this rubric item? Rubric item:
 
 
 class EnsembledModelEvaluatorConfig(EvaluatorConfig):
-    models: list[ModelEvaluatorConfig]  # todo: should this be dict?
+    models: list[ModelEvaluatorConfig]
     n_samples_per_model: t.Optional[int] = None
     type: t.Literal["llm-ensemble"] = "llm-ensemble"
 

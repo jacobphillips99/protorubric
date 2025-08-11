@@ -75,7 +75,7 @@ class Rubric(BaseConfig):
 
     async def asolve(
         self,
-        inputs: t.Any,  # TODO: fix any
+        inputs: t.Any,
     ) -> dict[str, AggregatedQueryConfig]:
         """
         Solves the rubric by iteratively solving each level of the DAG of requirements.
@@ -155,6 +155,8 @@ class Rubric(BaseConfig):
         for i, level in enumerate(self.levels):
             this_level = []
             for req in level:
-                this_level.append(f"- {req.name.title()}: {req.query.instruction}{' + (' + ', '.join(req.dependency_names) if req.dependency_names else '' + ')' if req.dependency_names else ''} => ({req.query.scoring_config.name})")
-            level_descriptions.append(f"Level {i + 1}:" +  "\n" + '\n'.join(this_level))
+                this_level.append(
+                    f"- {req.name.title()}: {req.query.instruction}{' + (' + ', '.join(req.dependency_names) if req.dependency_names else '' + ')' if req.dependency_names else ''} => ({req.query.scoring_config.name})"
+                )
+            level_descriptions.append(f"Level {i + 1}:" + "\n" + "\n".join(this_level))
         return "\n".join([title, *level_descriptions])

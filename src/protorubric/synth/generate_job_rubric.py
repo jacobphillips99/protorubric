@@ -135,9 +135,7 @@ Rubric:
 Return an answer for each step in the rubric as a JSON dictionary with the key being the step name and the value being the answer.
 Do not include ```json or ``` at the beginning or end of the response.
 """.strip()
-    breakpoint()
     problem_completion = get_completion(problem_with_steps)
-    breakpoint()
 
     full_convo = "\n".join(
         [

@@ -9,6 +9,7 @@ Open-source tools for autograding rubrics with LLMs.
 - Asynchronous and synchronous evaluation workflows.
 - Visualization of rubric structure and evaluation progress.
 - Integration with HealthBench dataset for medical dialogue evaluation.
+- Provider-agnostic via LiteLLM; built-in token-aware rate limiting and request caching.
 
 ## Installation
 <details>
@@ -43,12 +44,21 @@ uv pip install -e .                    # editable install
    - Ubuntu/Debian: `sudo apt-get install graphviz`
 </details>
 
+## Credentials and configuration
+
+- Set API keys as environment variables (inferred from configured providers):
+  - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`
+- Optional environment variables:
+  - `PROTORUBRIC_LOG_LEVEL` (default: `ERROR`)
+  - `protorubric_INVALIDATE_CACHE` (set to `True` to bypass the on-disk cache)
+- Rate limits and available providers/models come from `rate_limits.yaml`.
+
 ## Quick Start
 
 ### Define a rubric
 
 Create a rubric file, either in YAML or code, describing scoring, evaluators, aggregators, and requirements.
-Example in [`assets/examples/example_configs/test_rubric.yaml`](https://github.com/jacobphillips99/protorubric/blob/main/assets/examples/example_configs/test_rubric.yaml) or [`assets/examples/healthbench/healthbench_to_protorubric_utils.py`](https://github.com/jacobphillips99/protorubric/blob/main/assets/examples/healthbench/healthbench_to_protorubric_utils.py).
+Example in `assets/examples/example_configs/test_rubric.yaml` or `scripts/healthbench/healthbench_to_open_rubric_utils.py`.
 
 You can also create a rubric in code:
 <details>
@@ -56,6 +66,12 @@ You can also create a rubric in code:
 Construct a rubric for grading a response based on grammar and tone.
 
 ```python
+from protorubric.configs.evaluating import ModelEvaluatorConfig
+from protorubric.configs.query import QueryConfig
+from protorubric.configs.requirement import RequirementConfig
+from protorubric.configs.aggregating import WeightedAverageAggregatingConfig
+from protorubric.rubric import Rubric
+
 llm_judge = ModelEvaluatorConfig(model="gpt-4o", provider="openai")
 
 grammar_requirement = RequirementConfig(
@@ -66,7 +82,7 @@ grammar_requirement = RequirementConfig(
 
 tone_requirement = RequirementConfig(
    name="tone",
-   query=QueryConfig(instruction="What tone does the response have?", scoring_config="unit_vector"),
+   query=QueryConfig(instruction="What tone does the response have?", scoring_config="unit_scalar"),
    evaluator=llm_judge,
 )
 
@@ -75,6 +91,7 @@ overall_score_requirement = RequirementConfig(
    aggregator=WeightedAverageAggregatingConfig(weights=[0.9, 0.1]),
    dependency_names=["grammar", "tone"],
 )
+
 rubric = Rubric(requirements=[grammar_requirement, tone_requirement, overall_score_requirement])
 ```
 
@@ -86,6 +103,14 @@ rubric = Rubric(requirements=[grammar_requirement, tone_requirement, overall_sco
 Construct a rubric for determining whether the valuation of Scale AI is over 25 billion dollars.
 
 ```python
+from protorubric.configs.evaluating import ModelEvaluatorConfig, PassThroughEvaluatorConfig
+from protorubric.configs.query import QueryConfig, NullQueryConfig
+from protorubric.configs.requirement import RequirementConfig
+from protorubric.configs.aggregating import AllAggregatingConfig, LLMAggregatingConfig
+from protorubric.rubric import Rubric
+
+llm_judge = ModelEvaluatorConfig(model="gpt-4o", provider="openai")
+
 research_requirement = RequirementConfig(
    name="research",
    query=QueryConfig(instruction="research the company", scoring_config="free_text"),
@@ -109,13 +134,32 @@ valuation_requirement = RequirementConfig(
    evaluator=llm_judge,
    dependency_names=["arr", "arr_multiples"],
 )
-overall_result_requirement = RequirementConfig(
-   name="overall_result",
-   evaluator=binary,
+
+# Aggregate boolean conclusion using dependent results
+bool_final = RequirementConfig(
+   name="is_over_25b",
+   query=NullQueryConfig(),
    dependency_names=["valuation"],
+   evaluator=PassThroughEvaluatorConfig(),
+   aggregator=AllAggregatingConfig(),
 )
 
-rubric = Rubric(requirements=[research_requirement, arr_requirement, arr_multiples_requirement, valuation_requirement, overall_result_requirement])
+# Free-text explanation combining dependent results
+default_summary_prompt = (
+   "Summarize the available information and conclude in one sentence."
+)
+text_final = RequirementConfig(
+   name="explanation",
+   query=NullQueryConfig(),
+   dependency_names=["valuation", "arr", "arr_multiples", "research"],
+   evaluator=PassThroughEvaluatorConfig(),
+   aggregator=LLMAggregatingConfig(model="gpt-4o", aggregation_prompt=default_summary_prompt),
+)
+
+rubric = Rubric(requirements=[
+   research_requirement, arr_requirement, arr_multiples_requirement,
+   valuation_requirement, bool_final, text_final
+])
 ```
 </details>
 
@@ -144,7 +188,7 @@ rubric = Rubric.from_yaml("my_rubric.yaml")
 inputs = "role: user: Hello, how are you?\nrole: assistant: I'm fine, thank you!"
 
 # Run evaluation synchronously
-results = rubric.asolve(inputs)
+results = rubric.solve(inputs)
 ```
 
 
@@ -183,32 +227,61 @@ rwa.solve(inputs)
 ```
 
 ## HealthBench Integration
-TODO TODO
+We build on OpenAI’s HealthBench scripts to make the evaluation more modular and rubric‑first. If you’re new to HealthBench, start with the original scripts here: [OpenAI HealthBench scripts](https://github.com/openai/simple-evals/tree/main/healthbench_scripts).
+
+What we add on top:
+- **Rubric → structured requirements**: Convert HealthBench rubric items into explicit `Requirement`s with binary scoring and multiple aggregations (mode, weighted average, weighted sum). See `scripts/healthbench/healthbench_to_open_rubric_utils.py`.
+- **End‑to‑end runner**: Download data, generate assistant completions, build a rubric, and evaluate—clear separation between a sampler model and a grader model. See `scripts/healthbench/run.py` and `scripts/healthbench/setup_healthbench.py`.
+- **Meta‑HealthBench**: Take paragraph‑style rubrics, use an LLM to decompose them into yes/no checks, and aggregate into both a boolean and a short text answer. See `scripts/healthbench/setup_meta_healthbench.py` and `scripts/healthbench/run_meta.py`.
+
+Try it:
+```bash
+# Standard HealthBench: downloads/samples, builds rubric, evaluates 1 row
+python -m scripts.healthbench.run
+
+# Meta‑HealthBench: LLM‑decomposed rubric → requirements → evaluation
+python -m scripts.healthbench.run_meta
+```
+
+Notes:
+- Data caches under `assets/examples/healthbench/` on first run.
+- Configure model credentials via your environment (compatible with `litellm` providers).
+- Default models and sample size are set at the top of each script.
 
 ## Project Structure
 
-- `src/protorubric/` — core library modules.
-- `assets/` — example rubrics, evaluation results, and visualization outputs.
-- `scripts/` — helper scripts for testing and HealthBench integration.
-- `notebooks/` — example Jupyter notebooks.
-- `requirements.txt` — core dependencies.
-- `requirements-viz.txt` — visualization dependencies.
-- `rate_limits.yaml` — default rate limit configurations.
+- `src/protorubric/` — core library modules
+  - `configs/` — data classes for `scoring`, `evaluating`, `aggregating`, `query`, and `requirement`
+  - `models/` — LiteLLM request plumbing, caching, and types
+  - `eval/` — evaluation helpers like `RubricWithAnswers` and metrics
+  - `viz/` — visualization utilities
+  - `utils/` — graph utilities (topological levels, etc.)
+  - `rubric.py` — orchestrates DAG execution over requirements
+- `assets/` — images, example configs, cache outputs
+  - `examples/example_configs/` — YAML examples (scoring/evaluator/aggregator/rubric)
+  - `viz_outputs/` — visualization output directory
+  - `eval/` — pickled evaluation artifacts
+- `scripts/` — runnable examples and HealthBench utilities
+  - `test_viz.py`, `tester.py`
+  - `healthbench/` — dataset setup, rubric conversion, and runners
+- `tests/` — lightweight examples used during development
+- `rate_limits.yaml` — provider/model RPM and TPM settings
+- `notebooks/` — exploratory notebooks
 
-## Development
+## Configs at a glance
 
-- Formatting: Black, isort, Ruff, and Flake8 are pre-configured.
-- Type checking: MyPy (Python >=3.10).
+- `scoring_configs`: how a requirement is graded (`binary`, `unit_scalar`, `continuous`, `categorical`, `free_text`, or custom)
+- `evaluator_configs`: how a query is answered (e.g., `llm`, `llm-ensemble`, `pass-through`)
+- `aggregator_configs`: how multiple answers are combined (`mean`, `median`, `mode`, `all`, `any`, `weighted_sum`, `weighted_average`, `llm`)
+- `requirements`: list of requirement objects with `name`, `query`, `evaluator`, optional `dependency_names`, and optional `aggregator`
+- Configs can recursively include other YAMLs; see `assets/examples/example_configs/test_rubric.yaml`
 
-Run pre-commit checks before committing:
-```bash
-pre-commit run --all-files
-```
+## Caching and rate limiting
+
+- Responses are cached to `assets/request_cache.db` and keyed by request hash
+- Set `protorubric_INVALIDATE_CACHE=True` to bypass the cache
+- Token-aware rate limits are enforced per `rate_limits.yaml`
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please open issues and submit pull requests.
+This project is licensed under the MIT License - see the `LICENSE` file for details.

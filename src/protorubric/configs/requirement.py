@@ -31,7 +31,6 @@ class RequirementConfig(BaseConfig):
         ), f"Missing required kwargs [evaluator_configs, aggregator_configs]. Found kwargs: {kwargs.keys()}"
         scoring_configs: ScoringConfigCollector = kwargs["scoring_configs"]
 
-        # TODO: clean me up
         query = data["query"]
         if "scoring_config" in query and not isinstance(query["scoring_config"], ScoringConfig):
             if isinstance(query["scoring_config"], str):
