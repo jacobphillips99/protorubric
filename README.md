@@ -52,6 +52,7 @@ uv pip install -e .                    # editable install
   - `PROTORUBRIC_LOG_LEVEL` (default: `ERROR`)
   - `PROTORUBRIC_INVALIDATE_CACHE` (set to `True` to bypass the on-disk cache)
 - Rate limits and available providers/models come from `rate_limits.yaml`.
+- Token-aware rate limits are enforced per `rate_limits.yaml` with the `llm-rate-limiter` package. See [LLM Rate Limiter](https://github.com/jacobphillips99/llm-rate-limiter).
 
 ## Quick Start
 
